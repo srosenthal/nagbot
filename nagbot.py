@@ -3,7 +3,7 @@
 import os
 import re
 import sys
-from dataclasses import dataclass
+from collections import namedtuple
 from datetime import datetime
 
 import awspricing
@@ -30,43 +30,28 @@ def main():
     if (len(args) == 2 and str(args[1]).startswith('#')):
         destination_slack_channel = str(args[1])
     else:
-        destination_slack_channel = '#aws'
+        destination_slack_channel = '#nagbot-testing'
     print('Destination Slack channel is: ' + destination_slack_channel)
 
     instances = list_ec2_instances()
     post_slack_summary_messages(instances, destination_slack_channel)
 
-# Model class for an EC2 instance
-@dataclass
-class Instance:
-    region_name: str
-    instance_id: str
-    state: str
-    reason: str
-    instance_type: str
-    name: str
-    operating_system: str
-    stop_after: str
-    terminate_after: str
-    contact: str
-    monthly_price: float
-
-    def to_csv_row(self) -> str:
-        return ', '.join([self.region_name,
-                          self.instance_id,
-                          self.state,
-                          quote(self.reason),
-                          self.instance_type,
-                          quote(self.name),
-                          # self.operating_system,
-                          # quote(self.stop_after),
-                          # quote(self.terminate_after),
-                          quote(self.contact),
-                          # money_to_string(self.monthly_price)
-                          ])
+# Model for an EC2 instance
+Instance = namedtuple('Instance', \
+                      ['region_name', \
+                       'instance_id', \
+                       'state', \
+                       'reason', \
+                       'instance_type', \
+                       'name', \
+                       'operating_system', \
+                       'stop_after', \
+                       'terminate_after', \
+                       'contact', \
+                       'monthly_price'])
 
 # Get a list of model classes representing important properties of EC2 instances
-def list_ec2_instances() -> [Instance]:
+def list_ec2_instances():
     ec2_client = boto3.client('ec2')
     describe_regions_response = ec2_client.describe_regions()
     instances = []
@@ -77,14 +62,14 @@ def list_ec2_instances() -> [Instance]:
         describe_instances_response = ec2_client.describe_instances()
         for reservation in describe_instances_response['Reservations']:
             for instance_dict in reservation['Instances']:
-                instance: Instance = build_instance_model(region_name, instance_dict)
+                instance = build_instance_model(region_name, instance_dict)
                 instances.append(instance)
-                print(str(i) + ', ' + instance.to_csv_row())
+                print(str(i) + ': ' + str(instance))
                 i += 1
     return instances
 
 # Post messages to a Slack channel summarizing the status of EC2 instances
-def post_slack_summary_messages(instances, destination_slack_channel) -> None:
+def post_slack_summary_messages(instances, destination_slack_channel):
     slack_bot_token = os.environ['SLACK_BOT_TOKEN']
     slack_client = slack.WebClient(token=slack_bot_token)
 
@@ -118,11 +103,11 @@ def post_slack_summary_messages(instances, destination_slack_channel) -> None:
     slack_client.chat_postMessage(channel=destination_slack_channel, text=message, as_user=True)
 
 # Quote a string
-def quote(str: str) -> str:
+def quote(str):
     return '"' + str + '"'
 
 # Get the info about a single EC2 instance
-def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
+def build_instance_model(region_name, instance_dict):
     instance_type = instance_dict['InstanceType']
     platform = instance_dict.get('Platform', '')
     operating_system = ('Windows' if platform == 'windows' else 'Linux')
@@ -140,35 +125,35 @@ def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
                     monthly_price=lookup_monthly_price(region_name, instance_type, operating_system));
 
 # Convert the tags list returned from the EC2 API to a dictionary from tag name to tag value
-def make_tags_dict(tags_list: list) -> dict:
+def make_tags_dict(tags_list):
     tags = dict()
     for tag in tags_list:
         tags[tag['Key']] = tag['Value']
     return tags
 
 # Use the AWS API to look up the monthly price of an instance, assuming used all month, as hourly, on-demand
-def lookup_monthly_price(region_name: str, instance_type: str, operating_system: str) -> float:
+def lookup_monthly_price(region_name, instance_type, operating_system):
     ec2_offer = awspricing.offer('AmazonEC2')
     hourly = ec2_offer.ondemand_hourly(instance_type, region=region_name, operating_system=operating_system)
     return hourly * HOURS_IN_A_MONTH
 
 # Some instances are whitelisted from stop or terminate actions. These won't show up as recommended to stop/terminate.
-def is_whitelisted(instance: Instance):
+def is_whitelisted(instance):
     for regex in ['bam::.*bamboo']:
         if re.fullmatch(regex, instance.name) is not None:
             return True
     return False
 
 # Convert floating point dollars to a readable string
-def money_to_string(str: str) -> float:
+def money_to_string(str):
     return '${:.2f}'.format(str)
 
 # Test whether a string is an ISO-8601 date
-def is_date(str: str) -> bool:
+def is_date(str):
     return re.fullmatch('\d{4}-\d{2}-\d{2}', str) is not None
 
 # Test whether a date has passed
-def is_past_date(str: str) -> bool:
+def is_past_date(str):
     if is_date(str):
         return TODAY_YYYY_MM_DD > str;
     elif str == '':
@@ -176,7 +161,7 @@ def is_past_date(str: str) -> bool:
         # But any other string like "On weekends" or "Never" or a date that we don't understand is NOT considered past.
         return True
 
-def make_instance_summary(instance: Instance):
+def make_instance_summary(instance):
     instance_id = instance.instance_id
     instance_url = url_from_instance_id(instance.region_name, instance_id)
     link = '<{}|{}>'.format(instance_url, instance.name)
@@ -184,7 +169,7 @@ def make_instance_summary(instance: Instance):
         link, instance.state, instance.reason, instance.instance_type)
     return line
 
-def url_from_instance_id(region_name, instance_id) -> str:
+def url_from_instance_id(region_name, instance_id):
     return 'https://{}.console.aws.amazon.com/ec2/v2/home?region={}#Instances:search={}'.format(region_name, region_name, instance_id)
 
 if __name__ == "__main__":

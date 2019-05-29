@@ -1,2 +1,7 @@
 # Editor files
 .idea
+
+# Python venv
+bin
+lib
+pyvenv.cfg
