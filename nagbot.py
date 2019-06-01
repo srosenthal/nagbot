@@ -150,7 +150,7 @@ def money_to_string(str):
 
 # Test whether a string is an ISO-8601 date
 def is_date(str):
-    return re.fullmatch('\d{4}-\d{2}-\d{2}', str) is not None
+    return re.fullmatch(r'\d{4}-\d{2}-\d{2}', str) is not None
 
 # Test whether a date has passed
 def is_past_date(str):
