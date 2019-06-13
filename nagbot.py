@@ -103,7 +103,7 @@ def quote(str):
 
 # Some instances are whitelisted from stop or terminate actions. These won't show up as recommended to stop/terminate.
 def is_whitelisted(instance):
-    for regex in ['bam::.*bamboo']:
+    for regex in [r'bam::.*bamboo']:
         if re.fullmatch(regex, instance.name) is not None:
             return True
     return False
@@ -149,7 +149,7 @@ def main(args):
     channel = args.channel
     mode = args.mode
 
-    if re.fullmatch('#[A-Za-z0-9-]+', channel) is None:
+    if re.fullmatch(r'#[A-Za-z0-9-]+', channel) is None:
         print('Unexpected channel format "%s", should look like #random or #testing' % channel)
         sys.exit(1)
     print('Destination Slack channel is: ' + channel)
