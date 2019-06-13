@@ -7,7 +7,6 @@ import boto3
 
 os.environ['AWSPRICING_USE_CACHE'] = '1'
 HOURS_IN_A_MONTH = 730
-TODAY_YYYY_MM_DD = datetime.today().strftime('%Y-%m-%d')
 
 # Model for an EC2 instance
 Instance = namedtuple('Instance',

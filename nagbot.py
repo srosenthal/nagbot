@@ -5,13 +5,13 @@ __license__ = "MIT"
 import argparse
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import sqaws
 import sqslack
-from sqaws import TODAY_YYYY_MM_DD
 
 TODAY_YYYY_MM_DD = datetime.today().strftime('%Y-%m-%d')
+YESTERDAY_YYYY_MM_DD = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
 
 
 """
@@ -67,7 +67,7 @@ class Nagbot(object):
 
         # Only consider instances which still meet the criteria for stopping, AND were warned earlier today
         instances_to_stop = get_stoppable_instances(instances)
-        instances_to_stop = [i for i in instances if i.nagbot_state == 'Stop warning ' + TODAY_YYYY_MM_DD and i.state == 'running']
+        instances_to_stop = [i for i in instances_to_stop if safe_to_stop(i)]
 
         if len(instances_to_stop) > 0:
             message = 'I stopped the following instances:'
@@ -119,6 +119,10 @@ def is_past_date(str):
         # Unspecified dates default to past. So instances with no "Stop after" date are eligible for stopping.
         # But any other string like "On weekends" or "Never" or a date that we don't understand is NOT considered past.
         return True
+
+
+def safe_to_stop(instance):
+    return instance.state == 'running' and (instance.nagbot_state == 'Stop warning ' + TODAY_YYYY_MM_DD or instance.nagbot_state == 'Stop warning ' + YESTERDAY_YYYY_MM_DD)
 
 
 def make_instance_summary(instance):
