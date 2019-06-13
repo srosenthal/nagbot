@@ -51,24 +51,16 @@ class Nagbot(object):
         if len(instances_to_stop) > 0:
             message = 'The following %d _running_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
             for i in instances_to_stop:
+                contact = self.slack.lookup_user_by_email(i.contact)
                 message = message + make_instance_summary(i) + ', StopAfter={}, MonthlyPrice={}, Contact={}\n' \
-                    .format(i.stop_after, money_to_string(i.monthly_price), i.contact)
+                    .format(i.stop_after, money_to_string(i.monthly_price), contact)
                 self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stop warning ' + TODAY_YYYY_MM_DD)
             self.slack.send_message(channel, message)
         else:
             self.slack.send_message(channel, 'No instances are due to be stopped at this time.')
 
-        if False: # Terminating instances disabled for now
-            instances_to_terminate = get_terminatable_instances(instances)
-            if len(instances_to_terminate) > 0:
-                message = 'The following %d _stopped_ instances are due to be *TERMINATED*, based on the "Terminate after" tag:\n' % len(instances_to_terminate)
-                for i in instances_to_terminate:
-                    message = message + make_instance_summary(i) + ', TerminateAfter={}, Contact={}\n' \
-                        .format(i.terminate_after, i.contact)
-                    self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Terminate warning ' + TODAY_YYYY_MM_DD)
-                self.slack.send_message(channel, message)
-            else:
-                self.slack.send_message(channel, 'No instances are due to be terminated at this time.')
+        # Later, we'll also handle stopped instances which should be terminated
+
 
     def execute(self, channel):
         instances = self.aws.list_ec2_instances()
