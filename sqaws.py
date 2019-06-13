@@ -27,7 +27,7 @@ Instance = namedtuple('Instance',
 
 # Get a list of model classes representing important properties of EC2 instances
 def list_ec2_instances():
-    ec2 = boto3.client('ec2')
+    ec2 = boto3.client('ec2', region_name='us-west-2')
 
     describe_regions_response = ec2.describe_regions()
     instances = []
