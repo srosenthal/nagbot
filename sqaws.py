@@ -51,7 +51,7 @@ def build_instance_model(region_name, instance_dict):
     instance_type = instance_dict['InstanceType']
     platform = instance_dict.get('Platform', '')
     operating_system = ('Windows' if platform == 'windows' else 'Linux')
-    tags = make_tags_dict(instance_dict['Tags'])
+    tags = make_tags_dict(instance_dict.get('Tags', []))
     return Instance(region_name=region_name,
                     instance_id=instance_dict['InstanceId'],
                     state=instance_dict['State']['Name'],
