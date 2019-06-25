@@ -38,12 +38,13 @@ class Nagbot(object):
         num_total_instances = sum(1 for i in instances)
         running_monthly_cost = money_to_string(sum(i.monthly_price for i in instances if i.state == 'running'))
 
-        message = "Hi, I'm Nagbot v{} :wink: My job is to make sure we don't forget about unwanted AWS servers and waste money!\n".format(__version__)
-        message = message + "Here is some data...\n"
-        message = message + "We have {} running EC2 instances right now and {} total.\n".format(num_running_instances,
+        summary_msg = "Hi, I'm Nagbot v{} :wink: My job is to make sure we don't forget about unwanted AWS servers and waste money!\n".format(__version__)
+        summary_msg = summary_msg + "Here is some data...\n"
+        summary_msg = summary_msg + "We have {} running EC2 instances right now and {} total.\n".format(num_running_instances,
                                                                                                 num_total_instances)
-        message = message + "If we continue to run these instances all month, it would cost {} (plus more for EBS disks).\n" \
+        summary_msg = summary_msg + "If we continue to run these instances all month, it would cost {} (plus more for EBS disks).\n" \
             .format(running_monthly_cost)
+        self.slack.send_message(channel, summary_msg)
 
         # From here on, exclude "whitelisted" instances
         all_instances = instances
@@ -51,27 +52,26 @@ class Nagbot(object):
 
         instances_to_stop = get_stoppable_instances(instances)
         if len(instances_to_stop) > 0:
-            message = message + 'The following %d _running_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
+            detail_msg = 'The following %d _running_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
             for i in instances_to_stop:
                 contact = self.slack.lookup_user_by_email(i.contact)
-                message = message + make_instance_summary(i) + ', StopAfter={}, MonthlyPrice={}, Contact={}\n' \
+                detail_msg = detail_msg + make_instance_summary(i) + ', StopAfter={}, MonthlyPrice={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
                 self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stop warning ' + TODAY_YYYY_MM_DD)
         else:
-            message = message + 'No instances are due to be stopped at this time.\n'
+            detail_msg = 'No instances are due to be stopped at this time.\n'
 
         # Collect all of the data to a Google Sheet
         try:
             header = all_instances[0].to_header()
             body = [i.to_list() for i in all_instances]
             spreadsheet_url = gdocs.write_to_spreadsheet([header] + body)
-            message = message + 'If you want to see all the details, I saved a spreadsheet at ' + spreadsheet_url
+            detail_msg = detail_msg + 'If you want to see all the details, I wrote them to a spreadsheet at ' + spreadsheet_url
             print('Wrote data to Google sheet at URL ' + spreadsheet_url)
-        except:
-            print('Failed to write data to Google sheet!')
-            traceback.print_stack()
+        except Exception as e:
+            print('Failed to write data to Google sheet: ' + str(e))
 
-        self.slack.send_message(channel, message)
+        self.slack.send_message(channel, detail_msg)
 
         # Later, we'll also handle stopped instances which should be terminated
 
@@ -126,9 +126,9 @@ def is_date(str):
 def is_past_date(str):
     if is_date(str):
         return TODAY_YYYY_MM_DD >= str
-    elif str == '':
-        # Unspecified dates default to past. So instances with no "Stop after" date are eligible for stopping.
-        # But any other string like "On weekends" or "Never" or a date that we don't understand is NOT considered past.
+    elif str == '' or str.lower() == 'on weekends':
+        # Unspecified dates default to past. So instances with no "Stop after" tag are eligible for stopping.
+        # But any other string like "TBD" or "Never" or a date that we don't understand is NOT considered past.
         return True
 
 

@@ -10,6 +10,7 @@ class Mock(object):
         self.__dict__.update(kwargs)
 
 
+# NOTE: These tests are out of date! Don't expect them to pass
 class TestNagbot(TestCase):
 
     def test_notify_empty(self):
