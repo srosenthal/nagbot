@@ -1,27 +1,62 @@
 import os
-from collections import namedtuple
-from datetime import datetime
+from dataclasses import dataclass
 
 import awspricing
 import boto3
 
+from nagbot import money_to_string
+
 os.environ['AWSPRICING_USE_CACHE'] = '1'
 HOURS_IN_A_MONTH = 730
 
-# Model for an EC2 instance
-Instance = namedtuple('Instance',
-                      ['region_name',
-                       'instance_id',
-                       'state',
-                       'reason',
-                       'instance_type',
-                       'name',
-                       'operating_system',
-                       'stop_after',
-                       'terminate_after',
-                       'contact',
-                       'nagbot_state',
-                       'monthly_price'])
+# Quote a string
+def quote(str):
+    return '"' + str + '"'
+
+
+# Model class for an EC2 instance
+@dataclass
+class Instance:
+    region_name: str
+    instance_id: str
+    state: str
+    reason: str
+    instance_type: str
+    name: str
+    operating_system: str
+    stop_after: str
+    terminate_after: str
+    contact: str
+    nagbot_state: str
+    monthly_price: float
+
+    def to_header(self) -> str:
+        return ['Instance ID',
+                'Name',
+                'State',
+                'Stop After',
+                'Terminate After',
+                'Contact',
+                'Nagbot State',
+                'Monthly Price',
+                'Region Name',
+                'Instance Type',
+                'Reason',
+                'OS']
+
+    def to_list(self) -> str:
+        return [self.instance_id,
+                self.name,
+                self.state,
+                self.stop_after,
+                self.terminate_after,
+                self.contact,
+                self.nagbot_state,
+                money_to_string(self.monthly_price),
+                self.region_name,
+                self.instance_type,
+                self.reason,
+                self.operating_system]
 
 
 # Get a list of model classes representing important properties of EC2 instances
@@ -47,7 +82,7 @@ def list_ec2_instances():
 
 
 # Get the info about a single EC2 instance
-def build_instance_model(region_name, instance_dict):
+def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
     instance_type = instance_dict['InstanceType']
     platform = instance_dict.get('Platform', '')
     operating_system = ('Windows' if platform == 'windows' else 'Linux')
@@ -89,23 +124,23 @@ def set_tag(region_name, instance_id, tag_name, tag_value):
         'Key': tag_name,
         'Value': tag_value
     }])
-    print('create_tags response: ' + str(response))
+    print('Response from create_tags: ' + str(response))
 
 
 # Stop an EC2 instance
 def stop_instance(region_name, instance_id):
-    print('stopping instance: ' + str(instance_id) + '...')
+    print('Stopping instance: ' + str(instance_id) + '...')
     ec2 = boto3.client('ec2', region_name=region_name)
     response = ec2.stop_instances(InstanceIds=[instance_id])
-    print('stop_instances response: ' + str(response))
+    print('Response from stop_instances: ' + str(response))
 
 
 # Terminate an EC2 instance
 def terminate_instance(region_name, instance_id):
-    print('terminating instance: ' + str(instance_id) + '...')
+    print('Terminating instance: ' + str(instance_id) + '...')
     ec2 = boto3.client('ec2', region_name=region_name)
     response = ec2.terminate_instances(InstanceIds=[instance_id])
-    print('terminate_instances response: ' + str(response))
+    print('Response from terminate_instances: ' + str(response))
 
 
 if __name__ == '__main__':

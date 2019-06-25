@@ -1,12 +1,14 @@
 __author__ = "Stephen Rosenthal"
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __license__ = "MIT"
 
 import argparse
 import re
 import sys
+import traceback
 from datetime import datetime, timedelta
 
+import gdocs
 import sqaws
 import sqslack
 
@@ -42,22 +44,34 @@ class Nagbot(object):
                                                                                                 num_total_instances)
         message = message + "If we continue to run these instances all month, it would cost {} (plus more for EBS disks).\n" \
             .format(running_monthly_cost)
-        self.slack.send_message(channel, message)
 
         # From here on, exclude "whitelisted" instances
+        all_instances = instances
         instances = sorted((i for i in instances if not is_whitelisted(i)), key=lambda i: i.name)
 
         instances_to_stop = get_stoppable_instances(instances)
         if len(instances_to_stop) > 0:
-            message = 'The following %d _running_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
+            message = message + 'The following %d _running_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
             for i in instances_to_stop:
                 contact = self.slack.lookup_user_by_email(i.contact)
                 message = message + make_instance_summary(i) + ', StopAfter={}, MonthlyPrice={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
                 self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stop warning ' + TODAY_YYYY_MM_DD)
-            self.slack.send_message(channel, message)
         else:
-            self.slack.send_message(channel, 'No instances are due to be stopped at this time.')
+            message = message + 'No instances are due to be stopped at this time.\n'
+
+        # Collect all of the data to a Google Sheet
+        try:
+            header = all_instances[0].to_header()
+            body = [i.to_list() for i in all_instances]
+            spreadsheet_url = gdocs.write_to_spreadsheet([header] + body)
+            message = message + 'If you want to see all the details, I saved a spreadsheet at ' + spreadsheet_url
+            print('Wrote data to Google sheet at URL ' + spreadsheet_url)
+        except:
+            print('Failed to write data to Google sheet!')
+            traceback.print_stack()
+
+        self.slack.send_message(channel, message)
 
         # Later, we'll also handle stopped instances which should be terminated
 
@@ -70,11 +84,13 @@ class Nagbot(object):
         instances_to_stop = [i for i in instances_to_stop if safe_to_stop(i)]
 
         if len(instances_to_stop) > 0:
-            message = 'I stopped the following instances:'
+            message = 'I stopped the following instances: '
             for i in instances_to_stop:
+                contact = self.slack.lookup_user_by_email(i.contact)
                 message = message + make_instance_summary(i) + ', StopAfter={}, MonthlyPrice={}, Contact={}\n' \
-                    .format(i.stop_after, money_to_string(i.monthly_price), i.contact)
+                    .format(i.stop_after, money_to_string(i.monthly_price), contact)
                 self.aws.stop_instance(i.region_name, i.instance_id)
+                self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stopped on ' + TODAY_YYYY_MM_DD)
             self.slack.send_message(channel, message)
         else:
             self.slack.send_message(channel, 'No instances were stopped today.')
@@ -86,11 +102,6 @@ def get_stoppable_instances(instances):
 
 def get_terminatable_instances(instances):
     return list(i for i in instances if i.state == 'stopped' and is_past_date(i.terminate_after))
-
-
-# Quote a string
-def quote(str):
-    return '"' + str + '"'
 
 
 # Some instances are whitelisted from stop or terminate actions. These won't show up as recommended to stop/terminate.
