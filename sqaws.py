@@ -29,6 +29,8 @@ class Instance:
     contact: str
     nagbot_state: str
     monthly_price: float
+    monthly_server_price: float
+    monthly_storage_price: float
 
     def to_header(self) -> str:
         return ['Instance ID',
@@ -39,6 +41,8 @@ class Instance:
                 'Contact',
                 'Nagbot State',
                 'Monthly Price',
+                'Monthly Server Price',
+                'Monthly Storage Price',
                 'Region Name',
                 'Instance Type',
                 'Reason',
@@ -53,6 +57,8 @@ class Instance:
                 self.contact,
                 self.nagbot_state,
                 money_to_string(self.monthly_price),
+                money_to_string(self.monthly_server_price),
+                money_to_string(self.monthly_storage_price),
                 self.region_name,
                 self.instance_type,
                 self.reason,
@@ -83,22 +89,39 @@ def list_ec2_instances():
 
 # Get the info about a single EC2 instance
 def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
+    tags = make_tags_dict(instance_dict.get('Tags', []))
+
+    instance_id = instance_dict['InstanceId']
+    state = instance_dict['State']['Name']
+    state_reason = instance_dict.get('StateTransitionReason', '')
     instance_type = instance_dict['InstanceType']
+    name = tags.get('Name', '')
     platform = instance_dict.get('Platform', '')
     operating_system = ('Windows' if platform == 'windows' else 'Linux')
-    tags = make_tags_dict(instance_dict.get('Tags', []))
+
+    monthly_server_price = lookup_monthly_price(region_name, instance_type, operating_system)
+    monthly_storage_price = estimate_monthly_ebs_storage_price(region_name, instance_dict['InstanceId'])
+    monthly_price = (monthly_server_price + monthly_storage_price) if state == 'running' else monthly_storage_price
+
+    stop_after = tags.get('Stop after', '')
+    terminate_after = tags.get('Terminate after', '')
+    contact = tags.get('Contact', '')
+    nagbot_state = tags.get('Nagbot State', '')
+
     return Instance(region_name=region_name,
-                    instance_id=instance_dict['InstanceId'],
-                    state=instance_dict['State']['Name'],
-                    reason=instance_dict.get('StateTransitionReason', ''),
+                    instance_id=instance_id,
+                    state=state,
+                    reason=state_reason,
                     instance_type=instance_type,
-                    name=tags.get('Name', ''),
+                    name=name,
                     operating_system=operating_system,
-                    monthly_price=lookup_monthly_price(region_name, instance_type, operating_system),
-                    stop_after=tags.get('Stop after', ''),
-                    terminate_after=tags.get('Terminate after', ''),
-                    contact=tags.get('Contact', ''),
-                    nagbot_state=tags.get('Nagbot State', ''));
+                    monthly_price=monthly_price,
+                    monthly_server_price=monthly_server_price,
+                    monthly_storage_price=monthly_storage_price,
+                    stop_after=stop_after,
+                    terminate_after=terminate_after,
+                    contact=contact,
+                    nagbot_state=nagbot_state);
 
 
 # Convert the tags list returned from the EC2 API to a dictionary from tag name to tag value
@@ -114,6 +137,13 @@ def lookup_monthly_price(region_name, instance_type, operating_system):
     ec2_offer = awspricing.offer('AmazonEC2')
     hourly = ec2_offer.ondemand_hourly(instance_type, region=region_name, operating_system=operating_system)
     return hourly * HOURS_IN_A_MONTH
+
+
+# Estimate the monthly cost of an instance's EBS storage (disk drives)
+def estimate_monthly_ebs_storage_price(region_name, instance_id):
+    ec2_resource = boto3.resource('ec2', region_name=region_name)
+    total_gb = sum([v.size for v in ec2_resource.Instance(instance_id).volumes.all()])
+    return total_gb * 0.1 # Assume EBS costs $0.1/GB/month, true as of June 2019 for gp2 type storage
 
 
 # Set a tag on an instance

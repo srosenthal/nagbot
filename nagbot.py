@@ -36,13 +36,13 @@ class Nagbot(object):
 
         num_running_instances = sum(1 for i in instances if i.state == 'running')
         num_total_instances = sum(1 for i in instances)
-        running_monthly_cost = money_to_string(sum(i.monthly_price for i in instances if i.state == 'running'))
+        running_monthly_cost = money_to_string(sum(i.monthly_price for i in instances))
 
         summary_msg = "Hi, I'm Nagbot v{} :wink: My job is to make sure we don't forget about unwanted AWS servers and waste money!\n".format(__version__)
         summary_msg = summary_msg + "Here is some data...\n"
         summary_msg = summary_msg + "We have {} running EC2 instances right now and {} total.\n".format(num_running_instances,
                                                                                                 num_total_instances)
-        summary_msg = summary_msg + "If we continue to run these instances all month, it would cost {} (plus more for EBS disks).\n" \
+        summary_msg = summary_msg + "If we continue to run these instances all month, it would cost {}.\n" \
             .format(running_monthly_cost)
         self.slack.send_message(channel, summary_msg)
 

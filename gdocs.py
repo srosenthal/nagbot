@@ -20,9 +20,9 @@ def write_to_spreadsheet(data):
             cell.set_text_format('bold', True)
             cell.update()
 
-    # Sort by name, then by state
+    # Sort by name, then by price descending
     worksheet.sort_range('A3', 'Z999', basecolumnindex=1)
-    worksheet.sort_range('A3', 'Z999', basecolumnindex=2)
+    worksheet.sort_range('A3', 'Z999', basecolumnindex=7, sortorder='DESCENDING')
 
     return spreadsheet.url;
 
