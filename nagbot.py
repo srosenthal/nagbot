@@ -1,5 +1,5 @@
 __author__ = "Stephen Rosenthal"
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 __license__ = "MIT"
 
 import argparse
@@ -12,15 +12,17 @@ import gdocs
 import sqaws
 import sqslack
 
-TODAY_YYYY_MM_DD = datetime.today().strftime('%Y-%m-%d')
-YESTERDAY_YYYY_MM_DD = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+TODAY = datetime.today()
+TODAY_YYYY_MM_DD = TODAY.strftime('%Y-%m-%d')
+TODAY_IS_WEEKEND = TODAY.weekday() >= 5  # For weekday(), 5=Friday, 6=Saturday, 7=Sunday
+YESTERDAY_YYYY_MM_DD = (TODAY - timedelta(days=1)).strftime('%Y-%m-%d')
 
 
 """
 PREREQUISITES:
 1. An AWS account with credentials set up in a standard place (environment variables, home directory, etc.)
 2. The AWS credentials must have access to the EC2 APIs "describe_regions" and "describe_instances"
-3. PIP dependencies "awspricing", "boto3", "slackclient".
+3. PIP dependencies specified in requirements.txt.
 4. Environment variable "SLACK_BOT_TOKEN" containing a token allowing messages to be posted to Slack.
 """
 
@@ -31,7 +33,8 @@ class Nagbot(object):
         self.aws = aws
         self.slack = slack
 
-    def notify(self, channel):
+
+    def notify_internal(self, channel):
         instances = self.aws.list_ec2_instances()
 
         num_running_instances = sum(1 for i in instances if i.state == 'running')
@@ -76,7 +79,15 @@ class Nagbot(object):
         # Later, we'll also handle stopped instances which should be terminated
 
 
-    def execute(self, channel):
+    def notify(self, channel):
+        try:
+            self.notify_internal(channel)
+        except Exception as e:
+            self.slack.send_message(channel, "Nagbot failed to run the 'notify' command: " + str(e))
+            raise(e)
+
+
+    def execute_internal(self, channel):
         instances = self.aws.list_ec2_instances()
 
         # Only consider instances which still meet the criteria for stopping, AND were warned earlier today
@@ -94,6 +105,14 @@ class Nagbot(object):
             self.slack.send_message(channel, message)
         else:
             self.slack.send_message(channel, 'No instances were stopped today.')
+
+
+    def execute(self, channel):
+        try:
+            self.execute_internal(channel)
+        except Exception as e:
+            self.slack.send_message(channel, "Nagbot failed to run the 'execute' command: " + str(e))
+            raise(e)
 
 
 def get_stoppable_instances(instances):
@@ -126,10 +145,16 @@ def is_date(str):
 def is_past_date(str):
     if is_date(str):
         return TODAY_YYYY_MM_DD >= str
-    elif str == '' or str.lower() == 'on weekends':
-        # Unspecified dates default to past. So instances with no "Stop after" tag are eligible for stopping.
-        # But any other string like "TBD" or "Never" or a date that we don't understand is NOT considered past.
+    elif str == '':
+        # Instances with empty "Stop after" or "Terminate after" are treated as past dates,
+        # so they are eligible for stopping or termination.
         return True
+    elif TODAY_IS_WEEKEND and str.lower() == 'on weekends':
+        # Instances with special case tag "On Weekends" will be stopped on Friday, Saturday, Sunday
+        return True
+    else:
+        # Any other string like "TBD" or "Never" or a date format that we don't understand is NOT considered past.
+        return False
 
 
 def safe_to_stop(instance):
