@@ -55,7 +55,7 @@ class Nagbot(object):
 
         instances_to_stop = get_stoppable_instances(instances)
         if len(instances_to_stop) > 0:
-            detail_msg = 'The following %d _running_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
+            detail_msg = 'The following %d _running_ instances are due to be *STOPPED*, based on the "Stop After" tag:\n' % len(instances_to_stop)
             for i in instances_to_stop:
                 contact = self.slack.lookup_user_by_email(i.contact)
                 detail_msg = detail_msg + make_instance_summary(i) + ', StopAfter={}, MonthlyPrice={}, Contact={}\n' \
@@ -69,7 +69,7 @@ class Nagbot(object):
             header = all_instances[0].to_header()
             body = [i.to_list() for i in all_instances]
             spreadsheet_url = gdocs.write_to_spreadsheet([header] + body)
-            detail_msg = detail_msg + 'If you want to see all the details, I wrote them to a spreadsheet at ' + spreadsheet_url
+            detail_msg = detail_msg + '\nIf you want to see all the details, I wrote them to a spreadsheet at ' + spreadsheet_url
             print('Wrote data to Google sheet at URL ' + spreadsheet_url)
         except Exception as e:
             print('Failed to write data to Google sheet: ' + str(e))
@@ -98,7 +98,7 @@ class Nagbot(object):
             message = 'I stopped the following instances: '
             for i in instances_to_stop:
                 contact = self.slack.lookup_user_by_email(i.contact)
-                message = message + make_instance_summary(i) + ', StopAfter={}, MonthlyPrice={}, Contact={}\n' \
+                message = message + make_instance_summary(i) + ', "Stop After"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
                 self.aws.stop_instance(i.region_name, i.instance_id)
                 self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stopped on ' + TODAY_YYYY_MM_DD)
@@ -165,8 +165,11 @@ def make_instance_summary(instance):
     instance_id = instance.instance_id
     instance_url = url_from_instance_id(instance.region_name, instance_id)
     link = '<{}|{}>'.format(instance_url, instance.name)
-    line = '{}, State=({}, "{}"), Type={}'.format(
-        link, instance.state, instance.reason, instance.instance_type)
+    if instance.reason:
+        state = 'State=({}, "{}")'.format(instance.state, instance.reason)
+    else:
+        state = 'State={}'.format(instance.state)
+    line = '{}, {}, Type={}'.format(link, state, instance.instance_type)
     return line
 
 

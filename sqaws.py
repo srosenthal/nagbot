@@ -103,8 +103,8 @@ def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
     monthly_storage_price = estimate_monthly_ebs_storage_price(region_name, instance_dict['InstanceId'])
     monthly_price = (monthly_server_price + monthly_storage_price) if state == 'running' else monthly_storage_price
 
-    stop_after = tags.get('Stop after', '')
-    terminate_after = tags.get('Terminate after', '')
+    stop_after = tags.get('Stop after', tags.get('Stop After', tags.get('StopAfter', '')))
+    terminate_after = tags.get('Terminate after', tags.get('Terminate After', tags.get('TerminateAfter', '')))
     contact = tags.get('Contact', '')
     nagbot_state = tags.get('Nagbot State', '')
 
