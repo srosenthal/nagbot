@@ -14,7 +14,7 @@ import sqslack
 
 TODAY = datetime.today()
 TODAY_YYYY_MM_DD = TODAY.strftime('%Y-%m-%d')
-TODAY_IS_WEEKEND = TODAY.weekday() >= 5  # For weekday(), 5=Friday, 6=Saturday, 7=Sunday
+TODAY_IS_WEEKEND = TODAY.weekday() >= 4  # Days are 0-6. 4=Friday, 5=Saturday, 6=Sunday, 0=Monday
 YESTERDAY_YYYY_MM_DD = (TODAY - timedelta(days=1)).strftime('%Y-%m-%d')
 
 
