@@ -66,10 +66,10 @@ class Nagbot(object):
 
         instances_to_terminate = get_terminatable_instances(instances)
         if len(instances_to_terminate) > 0:
-            terminate_msg = 'The following %d _running_ instances are due to be *TERMINATED*, based on the "Terminate After" tag:\n' % len(instances_to_terminate)
+            terminate_msg = 'The following %d _running_ instances are due to be *TERMINATED*, based on the "Terminate after" tag:\n' % len(instances_to_terminate)
             for i in instances_to_terminate:
                 contact = self.slack.lookup_user_by_email(i.contact)
-                terminate_msg += make_instance_summary(i) + ', "Terminate After"={}, "Monthly Price"={}, Contact={}\n' \
+                terminate_msg += make_instance_summary(i) + ', "Terminate after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.terminate_after, money_to_string(i.monthly_price), contact)
                 self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Terminate warning ' + TODAY_YYYY_MM_DD)
         else:
@@ -78,10 +78,10 @@ class Nagbot(object):
 
         instances_to_stop = get_stoppable_instances(instances)
         if len(instances_to_stop) > 0:
-            stop_msg ='The following %d _stopped_ instances are due to be *STOPPED*, based on the "Stop After" tag:\n' % len(instances_to_stop)
+            stop_msg ='The following %d _stopped_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
             for i in instances_to_stop:
                 contact = self.slack.lookup_user_by_email(i.contact)
-                stop_msg += make_instance_summary(i) + ', "Stop After"={}, "Monthly Price"={}, Contact={}\n' \
+                stop_msg += make_instance_summary(i) + ', "Stop after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
                 self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stop warning ' + TODAY_YYYY_MM_DD)
         else:
@@ -112,7 +112,7 @@ class Nagbot(object):
             message = 'I terminated the following instances: '
             for i in instances_to_terminate:
                 contact = self.slack.lookup_user_by_email(i.contact)
-                message = message + make_instance_summary(i) + ', "Terminate After"={}, "Monthly Price"={}, Contact={}\n' \
+                message = message + make_instance_summary(i) + ', "Terminate after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.terminate_after, money_to_string(i.monthly_price), contact)
                 self.aws.terminate_instance(i.region_name, i.instance_id)
             self.slack.send_message(channel, message)
@@ -123,7 +123,7 @@ class Nagbot(object):
             message = 'I stopped the following instances: '
             for i in instances_to_stop:
                 contact = self.slack.lookup_user_by_email(i.contact)
-                message = message + make_instance_summary(i) + ', "Stop After"={}, "Monthly Price"={}, Contact={}\n' \
+                message = message + make_instance_summary(i) + ', "Stop after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
                 self.aws.stop_instance(i.region_name, i.instance_id)
                 self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stopped on ' + TODAY_YYYY_MM_DD)
@@ -153,7 +153,7 @@ def get_terminatable_instances(instances):
 
 
 def is_terminatable(instance):
-    # For now, we'll only terminate instances which have an explicit 'Terminate After' tag
+    # For now, we'll only terminate instances which have an explicit 'Terminate after' tag
     return instance.state == 'stopped' and instance.terminate_after and is_past_date(instance.terminate_after)
 
 
@@ -180,7 +180,7 @@ def is_past_date(str):
     if is_date(str):
         return TODAY_YYYY_MM_DD >= str
     elif str == '':
-        # Instances with empty "Stop After" or "Terminate After" are treated as past dates,
+        # Instances with empty "Stop after" or "Terminate after" are treated as past dates,
         # so they are eligible for stopping or termination.
         return True
     elif TODAY_IS_WEEKEND and (str.lower() == 'on weekends' or str.lower() == 'onweekends'):
