@@ -200,7 +200,7 @@ def is_safe_to_terminate(instance):
 
     match = re.fullmatch(r'Terminate warning (\d{4}-\d{2}-\d{2})', instance.nagbot_state)
     if match:
-        warning_date = datetime.strptime(m.group(1), '%Y-%m-%d')
+        warning_date = datetime.strptime(match.group(1), '%Y-%m-%d')
         return is_stopped and (TODAY - warning_date).days > TERMINATION_WARNING_DAYS
 
     return False
