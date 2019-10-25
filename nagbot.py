@@ -66,7 +66,7 @@ class Nagbot(object):
 
         instances_to_terminate = get_terminatable_instances(instances)
         if len(instances_to_terminate) > 0:
-            terminate_msg = 'The following %d _running_ instances are due to be *TERMINATED*, based on the "Terminate after" tag:\n' % len(instances_to_terminate)
+            terminate_msg = 'The following %d _stopped_ instances are due to be *TERMINATED*, based on the "Terminate after" tag:\n' % len(instances_to_terminate)
             for i in instances_to_terminate:
                 contact = self.slack.lookup_user_by_email(i.contact)
                 terminate_msg += make_instance_summary(i) + ', "Terminate after"={}, "Monthly Price"={}, Contact={}\n' \
@@ -78,7 +78,7 @@ class Nagbot(object):
 
         instances_to_stop = get_stoppable_instances(instances)
         if len(instances_to_stop) > 0:
-            stop_msg ='The following %d _stopped_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
+            stop_msg ='The following %d _running_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
             for i in instances_to_stop:
                 contact = self.slack.lookup_user_by_email(i.contact)
                 stop_msg += make_instance_summary(i) + ', "Stop after"={}, "Monthly Price"={}, Contact={}\n' \
