@@ -71,7 +71,9 @@ class Nagbot(object):
                 contact = self.slack.lookup_user_by_email(i.contact)
                 terminate_msg += make_instance_summary(i) + ', "Terminate after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.terminate_after, money_to_string(i.monthly_price), contact)
-                self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Terminate warning ' + TODAY_YYYY_MM_DD)
+                warning_date = get_terminate_warning_date(i)
+                if warning_date is None:
+                    self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Terminate warning ' + TODAY_YYYY_MM_DD)
         else:
             terminate_msg = 'No instances are due to be terminated at this time.\n'
         self.slack.send_message(channel, terminate_msg)
@@ -198,12 +200,17 @@ def is_safe_to_stop(instance):
 def is_safe_to_terminate(instance):
     is_stopped = instance.state == 'stopped'
 
+    warning_date = get_terminate_warning_date(instance)
+    return is_stopped and warning_date and (TODAY - warning_date).days > TERMINATION_WARNING_DAYS
+
+
+def get_terminate_warning_date(instance):
     match = re.fullmatch(r'Terminate warning (\d{4}-\d{2}-\d{2})', instance.nagbot_state)
     if match:
         warning_date = datetime.strptime(match.group(1), '%Y-%m-%d')
-        return is_stopped and (TODAY - warning_date).days > TERMINATION_WARNING_DAYS
+        return warning_date
 
-    return False
+    return None
 
 
 def make_instance_summary(instance):
