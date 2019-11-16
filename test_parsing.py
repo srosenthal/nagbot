@@ -68,5 +68,20 @@ class TestParsing(unittest.TestCase):
         assert parsed.on_weekends == True
         assert parsed.warning_date == datetime(2019, 2, 1)
 
+
+    def test_print_date_tag(self):
+        def roundtrip(date_tag):
+            parsed_date_tag = parsing.parse_date_tag(date_tag)
+            return str(parsed_date_tag)
+
+        assert roundtrip('2019-01-01') == '2019-01-01'
+        assert roundtrip('2019-01-01 (Nagbot: Warned on 2019-02-01)') \
+               == '2019-01-01 (Nagbot: Warned on 2019-02-01)'
+
+        assert roundtrip('On Weekends') == 'On Weekends'
+        assert roundtrip('oN wEeKeNdS') == 'On Weekends'
+        assert roundtrip('On Weekends (Nagbot: Warned on 2019-02-01)') \
+               == 'On Weekends (Nagbot: Warned on 2019-02-01)'
+
 if __name__ == '__main__':
     unittest.main()
