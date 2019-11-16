@@ -1,3 +1,5 @@
+Nagbot ![Build Status](https://img.shields.io/circleci/build/github/srosenthal/nagbot) ![License](https://img.shields.io/github/license/srosenthal/nagbot)
+=========
 
 # The Problem
 Amazon Web Services provides incredible flexibility for quickly spinning up servers with a variety of configurations. The big downside is that it's easy to lose track of AWS resources and end up spending a lot more money than you expected.
