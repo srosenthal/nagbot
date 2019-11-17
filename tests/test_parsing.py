@@ -43,6 +43,8 @@ class TestParsing(unittest.TestCase):
 
         assert roundtrip('2019-1-2') == '2019-01-02'
 
+        assert roundtrip(None) == None
+
 
     def test_parse_date_tag(self):
         parsed = parsing.parse_date_tag('2019-01-01')
