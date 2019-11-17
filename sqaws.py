@@ -158,19 +158,29 @@ def set_tag(region_name, instance_id, tag_name, tag_value):
 
 
 # Stop an EC2 instance
-def stop_instance(region_name, instance_id):
-    print('Stopping instance: ' + str(instance_id) + '...')
+def stop_instance(region_name: str, instance_id: str) -> bool:
+    print(f'Stopping instance: {str(instance_id)}...')
     ec2 = boto3.client('ec2', region_name=region_name)
-    response = ec2.stop_instances(InstanceIds=[instance_id])
-    print('Response from stop_instances: ' + str(response))
+    try:
+        response = ec2.stop_instances(InstanceIds=[instance_id])
+        print(f'Response from stop_instances: {str(response)}')
+        return True
+    except Exception as e:
+        print(f'Failure when calling stop_instances: {str(e)}')
+        return False
 
 
 # Terminate an EC2 instance
-def terminate_instance(region_name, instance_id):
-    print('Terminating instance: ' + str(instance_id) + '...')
+def terminate_instance(region_name: str, instance_id: str) -> bool:
+    print(f'Terminating instance: {str(instance_id)}...')
     ec2 = boto3.client('ec2', region_name=region_name)
-    response = ec2.terminate_instances(InstanceIds=[instance_id])
-    print('Response from terminate_instances: ' + str(response))
+    try:
+        response = ec2.terminate_instances(InstanceIds=[instance_id])
+        print(f'Response from terminate_instances: {str(response)}')
+        return True
+    except Exception as e:
+        print(f'Failure when calling terminate_instances: {str(e)}')
+        return False
 
 
 if __name__ == '__main__':
