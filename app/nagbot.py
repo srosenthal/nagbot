@@ -7,9 +7,9 @@ import re
 import sys
 from datetime import datetime, timedelta
 
-import gdocs
-import sqaws
-import sqslack
+from . import gdocs
+from . import sqaws
+from . import sqslack
 
 TERMINATION_WARNING_DAYS = 3
 

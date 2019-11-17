@@ -1,8 +1,10 @@
+import sys
+import unittest
 from datetime import datetime
 
-import parsing;
+import app
+from app import parsing
 
-import unittest
 
 class TestParsing(unittest.TestCase):
     def test_parse_date(self):

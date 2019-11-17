@@ -4,10 +4,14 @@ from dataclasses import dataclass
 import awspricing
 import boto3
 
-from nagbot import money_to_string
-
 os.environ['AWSPRICING_USE_CACHE'] = '1'
 HOURS_IN_A_MONTH = 730
+
+
+# Convert floating point dollars to a readable string
+def money_to_string(str):
+    return '${:.2f}'.format(str)
+
 
 # Quote a string
 def quote(str):
