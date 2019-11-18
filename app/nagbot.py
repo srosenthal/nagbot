@@ -29,14 +29,8 @@ PREREQUISITES:
 
 
 class Nagbot(object):
-
-    def __init__(self, aws, slack):
-        self.aws = aws
-        self.slack = slack
-
-
     def notify_internal(self, channel):
-        instances = self.aws.list_ec2_instances()
+        instances = sqaws.list_ec2_instances()
 
         num_running_instances = sum(1 for i in instances if i.state == 'running')
         num_total_instances = sum(1 for i in instances)
@@ -58,7 +52,7 @@ class Nagbot(object):
         except Exception as e:
             print('Failed to write data to Google sheet: ' + str(e))
 
-        self.slack.send_message(channel, summary_msg)
+        sqslack.send_message(channel, summary_msg)
 
         # From here on, exclude "whitelisted" instances
         all_instances = instances
@@ -68,39 +62,39 @@ class Nagbot(object):
         if len(instances_to_terminate) > 0:
             terminate_msg = 'The following %d _stopped_ instances are due to be *TERMINATED*, based on the "Terminate after" tag:\n' % len(instances_to_terminate)
             for i in instances_to_terminate:
-                contact = self.slack.lookup_user_by_email(i.contact)
+                contact = sqslack.lookup_user_by_email(i.contact)
                 terminate_msg += make_instance_summary(i) + ', "Terminate after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.terminate_after, money_to_string(i.monthly_price), contact)
                 warning_date = get_terminate_warning_date(i)
                 if warning_date is None:
-                    self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Terminate warning ' + TODAY_YYYY_MM_DD)
+                    sqaws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Terminate warning ' + TODAY_YYYY_MM_DD)
         else:
             terminate_msg = 'No instances are due to be terminated at this time.\n'
-        self.slack.send_message(channel, terminate_msg)
+        sqslack.send_message(channel, terminate_msg)
 
         instances_to_stop = get_stoppable_instances(instances)
         if len(instances_to_stop) > 0:
             stop_msg ='The following %d _running_ instances are due to be *STOPPED*, based on the "Stop after" tag:\n' % len(instances_to_stop)
             for i in instances_to_stop:
-                contact = self.slack.lookup_user_by_email(i.contact)
+                contact = sqslack.lookup_user_by_email(i.contact)
                 stop_msg += make_instance_summary(i) + ', "Stop after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
-                self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stop warning ' + TODAY_YYYY_MM_DD)
+                sqaws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stop warning ' + TODAY_YYYY_MM_DD)
         else:
             stop_msg = 'No instances are due to be stopped at this time.\n'
-        self.slack.send_message(channel, stop_msg)
+        sqslack.send_message(channel, stop_msg)
 
 
     def notify(self, channel):
         try:
             self.notify_internal(channel)
         except Exception as e:
-            self.slack.send_message(channel, "Nagbot failed to run the 'notify' command: " + str(e))
+            sqslack.send_message(channel, "Nagbot failed to run the 'notify' command: " + str(e))
             raise(e)
 
 
     def execute_internal(self, channel):
-        instances = self.aws.list_ec2_instances()
+        instances = sqaws.list_ec2_instances()
 
         # Only terminate instances which still meet the criteria for terminating, AND were warned several times
         instances_to_terminate = get_terminatable_instances(instances)
@@ -113,32 +107,32 @@ class Nagbot(object):
         if len(instances_to_terminate) > 0:
             message = 'I terminated the following instances: '
             for i in instances_to_terminate:
-                contact = self.slack.lookup_user_by_email(i.contact)
+                contact = sqslack.lookup_user_by_email(i.contact)
                 message = message + make_instance_summary(i) + ', "Terminate after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.terminate_after, money_to_string(i.monthly_price), contact)
-                self.aws.terminate_instance(i.region_name, i.instance_id)
-            self.slack.send_message(channel, message)
+                sqaws.terminate_instance(i.region_name, i.instance_id)
+            sqslack.send_message(channel, message)
         else:
-            self.slack.send_message(channel, 'No instances were terminated today.')
+            sqslack.send_message(channel, 'No instances were terminated today.')
 
         if len(instances_to_stop) > 0:
             message = 'I stopped the following instances: '
             for i in instances_to_stop:
-                contact = self.slack.lookup_user_by_email(i.contact)
+                contact = sqslack.lookup_user_by_email(i.contact)
                 message = message + make_instance_summary(i) + ', "Stop after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
-                self.aws.stop_instance(i.region_name, i.instance_id)
-                self.aws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stopped on ' + TODAY_YYYY_MM_DD)
-            self.slack.send_message(channel, message)
+                sqaws.stop_instance(i.region_name, i.instance_id)
+                sqaws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stopped on ' + TODAY_YYYY_MM_DD)
+            sqslack.send_message(channel, message)
         else:
-            self.slack.send_message(channel, 'No instances were stopped today.')
+            sqslack.send_message(channel, 'No instances were stopped today.')
 
 
     def execute(self, channel):
         try:
             self.execute_internal(channel)
         except Exception as e:
-            self.slack.send_message(channel, "Nagbot failed to run the 'execute' command: " + str(e))
+            sqslack.send_message(channel, "Nagbot failed to run the 'execute' command: " + str(e))
             raise(e)
 
 
@@ -241,7 +235,7 @@ def main(args):
         sys.exit(1)
     print('Destination Slack channel is: ' + channel)
 
-    nagbot = Nagbot(sqaws, sqslack)
+    nagbot = Nagbot()
 
     if mode.lower() == 'notify':
         nagbot.notify(channel)

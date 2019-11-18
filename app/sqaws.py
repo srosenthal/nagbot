@@ -129,7 +129,7 @@ def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
 
 
 # Convert the tags list returned from the EC2 API to a dictionary from tag name to tag value
-def make_tags_dict(tags_list):
+def make_tags_dict(tags_list: [dict[str, str]]) -> dict[str, str]:
     tags = dict()
     for tag in tags_list:
         tags[tag['Key']] = tag['Value']
@@ -137,28 +137,28 @@ def make_tags_dict(tags_list):
 
 
 # Use the AWS API to look up the monthly price of an instance, assuming used all month, as hourly, on-demand
-def lookup_monthly_price(region_name, instance_type, operating_system):
+def lookup_monthly_price(region_name: str, instance_type: str, operating_system: str) -> float:
     ec2_offer = awspricing.offer('AmazonEC2')
     hourly = ec2_offer.ondemand_hourly(instance_type, region=region_name, operating_system=operating_system)
     return hourly * HOURS_IN_A_MONTH
 
 
 # Estimate the monthly cost of an instance's EBS storage (disk drives)
-def estimate_monthly_ebs_storage_price(region_name, instance_id):
+def estimate_monthly_ebs_storage_price(region_name: str, instance_id: str) -> float:
     ec2_resource = boto3.resource('ec2', region_name=region_name)
     total_gb = sum([v.size for v in ec2_resource.Instance(instance_id).volumes.all()])
     return total_gb * 0.1 # Assume EBS costs $0.1/GB/month, true as of June 2019 for gp2 type storage
 
 
 # Set a tag on an instance
-def set_tag(region_name, instance_id, tag_name, tag_value):
+def set_tag(region_name: str, instance_id: str, tag_name: str, tag_value: str) -> None:
     ec2 = boto3.client('ec2', region_name=region_name)
-    print('Setting tag ' + tag_value + ' on instance: ' + str(instance_id) + " in region " + region_name)
+    print(f'Setting tag {tag_value} on instance: {instance_id} in region {region_name}')
     response = ec2.create_tags(Resources=[instance_id], Tags=[{
         'Key': tag_name,
         'Value': tag_value
     }])
-    print('Response from create_tags: ' + str(response))
+    print(f'Response from create_tags: {str(response)}')
 
 
 # Stop an EC2 instance
