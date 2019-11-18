@@ -6,14 +6,18 @@ import app.sqslack
 
 
 class TestSlack(unittest.TestCase):
-    @patch('app.sqslack.slack.WebClient')
-    def test_send_message(self, mock_client):
-        channel = '#nagbot'
-        message = 'Hey everybody!'
+    def setup_mock_slack(self, mock_web_client):
         token = '<not a real Slack API token>'
         os.environ['SLACK_BOT_TOKEN'] = token
+        mock_slack = mock_web_client.return_value
+        return mock_slack, token
 
-        mock_slack = mock_client.return_value
+
+    @patch('app.sqslack.slack.WebClient')
+    def test_send_message(self, mock_client):
+        mock_slack, token = self.setup_mock_slack(mock_client)
+        channel = '#nagbot'
+        message = 'Hey everybody!'
 
         app.sqslack.send_message(channel, message)
 
@@ -23,11 +27,8 @@ class TestSlack(unittest.TestCase):
 
     @patch('app.sqslack.slack.WebClient')
     def test_lookup_user_by_email(self, mock_client):
+        mock_slack, token = self.setup_mock_slack(mock_client)
         email = 'stephen.rosenthal@seeq.com'
-        token = '<not a real Slack API token>'
-        os.environ['SLACK_BOT_TOKEN'] = token
-
-        mock_slack = mock_client.return_value
         mock_slack.users_lookupByEmail.return_value.data = {'user': {'id': 'UJ0JNCX19'}}
 
         result = app.sqslack.lookup_user_by_email(email)
@@ -39,14 +40,10 @@ class TestSlack(unittest.TestCase):
 
     @patch('app.sqslack.slack.WebClient')
     def test_lookup_user_by_email_exception(self, mock_client):
+        mock_slack, token = self.setup_mock_slack(mock_client)
         email = 'stephen.rosenthal@seeq.com'
-        token = '<not a real Slack API token>'
-        os.environ['SLACK_BOT_TOKEN'] = token
-
         def raise_error():
             raise RuntimeError('User with email could not be found')
-
-        mock_slack = mock_client.return_value
         mock_slack.users_lookupByEmail.side_effect = lambda *args, **kw: raise_error()
 
         result = app.sqslack.lookup_user_by_email(email)
