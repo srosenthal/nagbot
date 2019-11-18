@@ -129,7 +129,7 @@ def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
 
 
 # Convert the tags list returned from the EC2 API to a dictionary from tag name to tag value
-def make_tags_dict(tags_list: [dict[str, str]]) -> dict[str, str]:
+def make_tags_dict(tags_list: list) -> dict:
     tags = dict()
     for tag in tags_list:
         tags[tag['Key']] = tag['Value']
