@@ -1,5 +1,5 @@
 __author__ = "Stephen Rosenthal"
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 __license__ = "MIT"
 
 import argparse
@@ -8,6 +8,7 @@ import sys
 from datetime import datetime, timedelta
 
 from . import gdocs
+from . import parsing
 from . import sqaws
 from . import sqslack
 
@@ -17,7 +18,7 @@ TODAY = datetime.today()
 TODAY_YYYY_MM_DD = TODAY.strftime('%Y-%m-%d')
 TODAY_IS_WEEKEND = TODAY.weekday() >= 4  # Days are 0-6. 4=Friday, 5=Saturday, 6=Sunday, 0=Monday
 YESTERDAY_YYYY_MM_DD = (TODAY - timedelta(days=1)).strftime('%Y-%m-%d')
-
+MIN_TERMINATION_WARNING_YYYY_MM_DD = (TODAY - timedelta(days=3)).strftime('%Y-%m-%d')
 
 """
 PREREQUISITES:
@@ -65,9 +66,8 @@ class Nagbot(object):
                 contact = sqslack.lookup_user_by_email(i.contact)
                 terminate_msg += make_instance_summary(i) + ', "Terminate after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.terminate_after, money_to_string(i.monthly_price), contact)
-                warning_date = get_terminate_warning_date(i)
-                if warning_date is None:
-                    sqaws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Terminate warning ' + TODAY_YYYY_MM_DD)
+                sqaws.set_tag(i.region_name, i.instance_id, 'Terminate after',
+                              parsing.add_warning_to_tag(i.terminate_after, TODAY_YYYY_MM_DD, replace=True))
         else:
             terminate_msg = 'No instances are due to be terminated at this time.\n'
         sqslack.send_message(channel, terminate_msg)
@@ -79,7 +79,8 @@ class Nagbot(object):
                 contact = sqslack.lookup_user_by_email(i.contact)
                 stop_msg += make_instance_summary(i) + ', "Stop after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
-                sqaws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stop warning ' + TODAY_YYYY_MM_DD)
+                sqaws.set_tag(i.region_name, i.instance_id, 'Stop after',
+                              parsing.add_warning_to_tag(i.stop_after, TODAY_YYYY_MM_DD))
         else:
             stop_msg = 'No instances are due to be stopped at this time.\n'
         sqslack.send_message(channel, stop_msg)
@@ -141,7 +142,12 @@ def get_stoppable_instances(instances):
 
 
 def is_stoppable(instance):
-    return instance.state == 'running' and is_past_date(instance.stop_after)
+    parsed_date: parsing.ParsedDate = parsing.parse_date_tag(instance.stop_after)
+
+    return instance.state == 'running' and (
+            (parsed_date.expiry_date is None) # Treat unspecified "Stop after" dates as being in the past
+            or (TODAY_IS_WEEKEND and parsed_date.on_weekends) \
+            or (TODAY_YYYY_MM_DD >= parsed_date.expiry_date))
 
 
 def get_terminatable_instances(instances):
@@ -149,8 +155,11 @@ def get_terminatable_instances(instances):
 
 
 def is_terminatable(instance):
+    parsed_date: parsing.ParsedDate = parsing.parse_date_tag(instance.terminate_after)
+
     # For now, we'll only terminate instances which have an explicit 'Terminate after' tag
-    return instance.state == 'stopped' and instance.terminate_after and is_past_date(instance.terminate_after)
+    return instance.state == 'stopped' and (
+            (parsed_date.expiry_date is not None and TODAY_YYYY_MM_DD >= parsed_date.expiry_date))
 
 
 # Some instances are whitelisted from stop or terminate actions. These won't show up as recommended to stop/terminate.
@@ -166,45 +175,16 @@ def money_to_string(str):
     return '${:.2f}'.format(str)
 
 
-# Test whether a string is an ISO-8601 date
-def is_date(str):
-    return re.fullmatch(r'\d{4}-\d{2}-\d{2}', str) is not None
-
-
-# Test whether a date has passed
-def is_past_date(str):
-    if is_date(str):
-        return TODAY_YYYY_MM_DD >= str
-    elif str == '':
-        # Instances with empty "Stop after" or "Terminate after" are treated as past dates,
-        # so they are eligible for stopping or termination.
-        return True
-    elif TODAY_IS_WEEKEND and (str.lower() == 'on weekends' or str.lower() == 'onweekends'):
-        # Instances with special case tag "On Weekends" will be stopped on Friday, Saturday, Sunday
-        return True
-    else:
-        # Any other string like "TBD" or "Never" or a date format that we don't understand is NOT considered past.
-        return False
-
-
 def is_safe_to_stop(instance):
-    return instance.state == 'running' and (instance.nagbot_state == 'Stop warning ' + TODAY_YYYY_MM_DD or instance.nagbot_state == 'Stop warning ' + YESTERDAY_YYYY_MM_DD)
+    warning_date = parsing.parse_date_tag(instance.stop_after).warning_date
+    return is_stoppable(instance) \
+           and warning_date is not None and warning_date <= TODAY_YYYY_MM_DD;
 
 
 def is_safe_to_terminate(instance):
-    is_stopped = instance.state == 'stopped'
-
-    warning_date = get_terminate_warning_date(instance)
-    return is_stopped and warning_date and (TODAY - warning_date).days > TERMINATION_WARNING_DAYS
-
-
-def get_terminate_warning_date(instance):
-    match = re.fullmatch(r'Terminate warning (\d{4}-\d{2}-\d{2})', instance.nagbot_state)
-    if match:
-        warning_date = datetime.strptime(match.group(1), '%Y-%m-%d')
-        return warning_date
-
-    return None
+    warning_date = parsing.parse_date_tag(instance.terminate_after).warning_date
+    return is_terminatable(instance) \
+           and warning_date is not None and warning_date <= MIN_TERMINATION_WARNING_YYYY_MM_DD;
 
 
 def make_instance_summary(instance):
