@@ -34,11 +34,3 @@ def get_sheet():
 def get_client():
     service_account_file = os.environ['GDOCS_SERVICE_ACCOUNT_FILENAME']
     return pygsheets.authorize(service_account_file=service_account_file)
-
-
-def main():
-    1
-
-
-if __name__ == '__main__':
-    main()

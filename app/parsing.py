@@ -2,8 +2,6 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 
-import dateutil.parser
-
 
 # Return a datetime.datetime formatted date, or None if the string is not a date
 def parse_date(str: str) -> datetime:
