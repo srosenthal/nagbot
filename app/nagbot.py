@@ -67,7 +67,7 @@ class Nagbot(object):
                 terminate_msg += make_instance_summary(i) + ', "Terminate after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.terminate_after, money_to_string(i.monthly_price), contact)
                 sqaws.set_tag(i.region_name, i.instance_id, 'Terminate after',
-                              parsing.add_warning_to_tag(i.terminate_after, TODAY_YYYY_MM_DD, replace=True))
+                              parsing.add_warning_to_tag(i.terminate_after, TODAY_YYYY_MM_DD))
         else:
             terminate_msg = 'No instances are due to be terminated at this time.\n'
         sqslack.send_message(channel, terminate_msg)
@@ -80,7 +80,7 @@ class Nagbot(object):
                 stop_msg += make_instance_summary(i) + ', "Stop after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
                 sqaws.set_tag(i.region_name, i.instance_id, 'Stop after',
-                              parsing.add_warning_to_tag(i.stop_after, TODAY_YYYY_MM_DD))
+                              parsing.add_warning_to_tag(i.stop_after, TODAY_YYYY_MM_DD, replace=True))
         else:
             stop_msg = 'No instances are due to be stopped at this time.\n'
         sqslack.send_message(channel, stop_msg)
