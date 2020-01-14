@@ -1,4 +1,4 @@
-Nagbot ![Build Status](https://img.shields.io/circleci/build/github/srosenthal/nagbot) ![License](https://img.shields.io/github/license/srosenthal/nagbot)
+Nagbot [![Build Status](https://img.shields.io/circleci/build/github/srosenthal/nagbot)](https://circleci.com/gh/srosenthal/nagbot) [![License](https://img.shields.io/github/license/srosenthal/nagbot)](https://github.com/srosenthal/nagbot/blob/master/LICENSE)
 =========
 
 # The Problem
