@@ -17,3 +17,23 @@ Nagbot does the following:
 
 Here's what a Nagbot notification looks like in Slack:
 ![Example of Nagbot's Slack message](https://github.com/srosenthal/nagbot/blob/master/nagbot-slack.png "Example of Nagbot's Slack message")
+
+# Releasing New Versions
+
+Update the version at the top of nagbot.py to vX.Y.Z, commit, and push your changes
+
+Tag the version in git:
+
+```sh
+git fetch && git switch --detach origin/master
+git tag vX.Y.Z
+git push --tags
+```
+
+Wait for GitHub Actions to publish the new tag to [JFrog](https://seeq.jfrog.io/ui/packages/docker:%2F%2Fnagbot)
+
+Promote to `prod` using:
+
+```sh
+jfrog rt docker-promote nagbot nagbot-docker-dev-local nagbot-docker-prod-local --copy=true --source-tag=vX.Y.Z
+```
