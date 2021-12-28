@@ -1,11 +1,7 @@
-import os
 from dataclasses import dataclass
 
-import awspricing
 import boto3
-
-os.environ['AWSPRICING_USE_CACHE'] = '1'
-HOURS_IN_A_MONTH = 730
+from .pricing import PricingData
 
 
 # Convert floating point dollars to a readable string
@@ -71,7 +67,7 @@ class Instance:
 
 
 # Get a list of model classes representing important properties of EC2 instances
-def list_ec2_instances():
+def list_ec2_instances(pricing: PricingData):
     ec2 = boto3.client('ec2', region_name='us-west-2')
 
     describe_regions_response = ec2.describe_regions()
@@ -79,21 +75,21 @@ def list_ec2_instances():
     i = 1
     print('Checking all AWS regions...')
     for region in describe_regions_response['Regions']:
-        print('region = ' + str(region))
+        # print('region = ' + str(region))
         region_name = region['RegionName']
         ec2 = boto3.client('ec2', region_name=region_name)
         describe_instances_response = ec2.describe_instances()
         for reservation in describe_instances_response['Reservations']:
             for instance_dict in reservation['Instances']:
-                instance = build_instance_model(region_name, instance_dict)
+                instance = build_instance_model(pricing, region_name, instance_dict)
                 instances.append(instance)
-                print(str(i) + ': ' + str(instance))
+                # print(str(i) + ': ' + str(instance))
                 i += 1
     return instances
 
 
 # Get the info about a single EC2 instance
-def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
+def build_instance_model(pricing: PricingData, region_name: str, instance_dict: dict) -> Instance:
     tags = make_tags_dict(instance_dict.get('Tags', []))
 
     instance_id = instance_dict['InstanceId']
@@ -104,7 +100,7 @@ def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
     platform = instance_dict.get('Platform', '')
     operating_system = ('Windows' if platform == 'windows' else 'Linux')
 
-    monthly_server_price = lookup_monthly_price(region_name, instance_type, operating_system)
+    monthly_server_price = pricing.lookup_monthly_price(region_name, instance_type, operating_system)
     monthly_storage_price = estimate_monthly_ebs_storage_price(region_name, instance_dict['InstanceId'])
     monthly_price = (monthly_server_price + monthly_storage_price) if state == 'running' else monthly_storage_price
 
@@ -135,13 +131,6 @@ def make_tags_dict(tags_list: list) -> dict:
     for tag in tags_list:
         tags[tag['Key']] = tag['Value']
     return tags
-
-
-# Use the AWS API to look up the monthly price of an instance, assuming used all month, as hourly, on-demand
-def lookup_monthly_price(region_name: str, instance_type: str, operating_system: str) -> float:
-    ec2_offer = awspricing.offer('AmazonEC2')
-    hourly = ec2_offer.ondemand_hourly(instance_type, region=region_name, operating_system=operating_system)
-    return hourly * HOURS_IN_A_MONTH
 
 
 # Estimate the monthly cost of an instance's EBS storage (disk drives)

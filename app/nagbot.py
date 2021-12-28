@@ -12,6 +12,7 @@ from . import parsing
 from . import sqaws
 from . import sqslack
 from .sqaws import money_to_string
+from .pricing import PricingData
 
 TERMINATION_WARNING_DAYS = 3
 
@@ -35,7 +36,8 @@ PREREQUISITES:
 class Nagbot(object):
     @staticmethod
     def notify_internal(channel, dryrun):
-        instances = sqaws.list_ec2_instances()
+        pricing = PricingData()
+        instances = sqaws.list_ec2_instances(pricing)
 
         num_running_instances = sum(1 for i in instances if i.state == 'running')
         num_total_instances = len(instances)
@@ -100,7 +102,8 @@ class Nagbot(object):
 
     @staticmethod
     def execute_internal(channel, dryrun):
-        instances = sqaws.list_ec2_instances()
+        pricing = PricingData()
+        instances = sqaws.list_ec2_instances(pricing)
 
         # Only terminate instances which still meet the criteria for terminating, AND were warned several times
         instances_to_terminate = get_terminatable_instances(instances)

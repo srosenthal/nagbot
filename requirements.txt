@@ -1,4 +1,3 @@
-awspricing==2.0.3
 boto3==1.20.26
 slackclient==2.9.3
 pygsheets==2.0.5
