@@ -50,6 +50,11 @@ class TestParsing(unittest.TestCase):
         assert parsed.on_weekends is False
         assert parsed.warning_date is None
 
+        parsed = parsing.parse_date_tag('2021-02-31')
+        assert parsed.expiry_date is None  # invalid date
+        assert parsed.on_weekends is False
+        assert parsed.warning_date is None
+
         parsed = parsing.parse_date_tag('2019-01-01 (Nagbot: Warned on 2019-02-01)')
         assert parsed.expiry_date == '2019-01-01'
         assert parsed.on_weekends is False

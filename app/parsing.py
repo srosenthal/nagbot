@@ -46,8 +46,12 @@ def parse_date_tag(date_tag: str) -> ParsedDate:
 
     match = re.match(r'^(\d{4}-\d{2}-\d{2})', date_tag)
     if match:
-        expiry_date = datetime.strptime(match.group(1), '%Y-%m-%d')
-        parsed_date.expiry_date = date_to_string(expiry_date)
+        try:
+            expiry_date = datetime.strptime(match.group(1), '%Y-%m-%d')
+            parsed_date.expiry_date = date_to_string(expiry_date)
+        except ValueError:
+            # The data may not be valid
+            pass
 
     match = re.match(r'^On Weekends', date_tag, re.IGNORECASE)
     if match:
