@@ -24,7 +24,7 @@ def write_to_spreadsheet(data):
     worksheet.sort_range('A3', 'Z999', basecolumnindex=1)
     worksheet.sort_range('A3', 'Z999', basecolumnindex=7, sortorder='DESCENDING')
 
-    return spreadsheet.url;
+    return spreadsheet.url
 
 
 def get_sheet():

@@ -1,4 +1,3 @@
-import sys
 import unittest
 from unittest.mock import patch
 
@@ -27,7 +26,7 @@ class TestAws(unittest.TestCase):
         tag_value = '2019-12-25'
         mock_ec2 = mock_client.return_value
 
-        app.sqaws.set_tag(region_name, instance_id, tag_name, tag_value)
+        app.sqaws.set_tag(region_name, instance_id, tag_name, tag_value, dryrun=False)
 
         mock_client.assert_called_once_with('ec2', region_name=region_name)
         mock_ec2.create_tags.assert_called_once_with(Resources=[instance_id], Tags=[{
@@ -35,18 +34,16 @@ class TestAws(unittest.TestCase):
             'Value': tag_value
         }])
 
-
     @patch('app.sqaws.boto3.client')
     def test_stop_instance(self, mock_client):
         region_name = 'us-east-1'
         instance_id = 'i-0f06b49c1f16dcfde'
         mock_ec2 = mock_client.return_value
 
-        assert app.sqaws.stop_instance(region_name, instance_id)
+        assert app.sqaws.stop_instance(region_name, instance_id, dryrun=False)
 
         mock_client.assert_called_once_with('ec2', region_name=region_name)
         mock_ec2.stop_instances.assert_called_once_with(InstanceIds=[instance_id])
-
 
     @patch('app.sqaws.boto3.client')
     def test_stop_instance_exception(self, mock_client):
@@ -59,11 +56,10 @@ class TestAws(unittest.TestCase):
         mock_ec2 = mock_client.return_value
         mock_ec2.stop_instances.side_effect = lambda *args, **kw: raise_error()
 
-        assert not app.sqaws.stop_instance(region_name, instance_id)
+        assert not app.sqaws.stop_instance(region_name, instance_id, dryrun=False)
 
         mock_client.assert_called_once_with('ec2', region_name=region_name)
         mock_ec2.stop_instances.assert_called_once_with(InstanceIds=[instance_id])
-
 
     @patch('app.sqaws.boto3.client')
     def test_terminate_instance(self, mock_client):
@@ -71,11 +67,10 @@ class TestAws(unittest.TestCase):
         instance_id = 'i-0f06b49c1f16dcfde'
         mock_ec2 = mock_client.return_value
 
-        assert app.sqaws.terminate_instance(region_name, instance_id)
+        assert app.sqaws.terminate_instance(region_name, instance_id, dryrun=False)
 
         mock_client.assert_called_once_with('ec2', region_name=region_name)
         mock_ec2.terminate_instances.assert_called_once_with(InstanceIds=[instance_id])
-
 
     @patch('app.sqaws.boto3.client')
     def test_terminate_instance_exception(self, mock_client):
@@ -89,7 +84,7 @@ class TestAws(unittest.TestCase):
         mock_ec2 = mock_client.return_value
         mock_ec2.terminate_instances.side_effect = lambda *args, **kw: raise_error()
 
-        assert not app.sqaws.terminate_instance(region_name, instance_id)
+        assert not app.sqaws.terminate_instance(region_name, instance_id, dryrun=False)
 
         mock_client.assert_called_once_with('ec2', region_name=region_name)
         mock_ec2.terminate_instances.assert_called_once_with(InstanceIds=[instance_id])

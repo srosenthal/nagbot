@@ -9,13 +9,13 @@ HOURS_IN_A_MONTH = 730
 
 
 # Convert floating point dollars to a readable string
-def money_to_string(str):
-    return '${:.2f}'.format(str)
+def money_to_string(amount):
+    return '${:.2f}'.format(amount)
 
 
 # Quote a string
-def quote(str):
-    return '"' + str + '"'
+def quote(value):
+    return '"' + value + '"'
 
 
 # Model class for an EC2 instance
@@ -36,7 +36,8 @@ class Instance:
     monthly_server_price: float
     monthly_storage_price: float
 
-    def to_header(self) -> str:
+    @staticmethod
+    def to_header() -> [str]:
         return ['Instance ID',
                 'Name',
                 'State',
@@ -52,7 +53,7 @@ class Instance:
                 'Reason',
                 'OS']
 
-    def to_list(self) -> str:
+    def to_list(self) -> [str]:
         return [self.instance_id,
                 self.name,
                 self.state,
@@ -125,7 +126,7 @@ def build_instance_model(region_name: str, instance_dict: dict) -> Instance:
                     stop_after=stop_after,
                     terminate_after=terminate_after,
                     contact=contact,
-                    nagbot_state=nagbot_state);
+                    nagbot_state=nagbot_state)
 
 
 # Convert the tags list returned from the EC2 API to a dictionary from tag name to tag value
@@ -147,27 +148,29 @@ def lookup_monthly_price(region_name: str, instance_type: str, operating_system:
 def estimate_monthly_ebs_storage_price(region_name: str, instance_id: str) -> float:
     ec2_resource = boto3.resource('ec2', region_name=region_name)
     total_gb = sum([v.size for v in ec2_resource.Instance(instance_id).volumes.all()])
-    return total_gb * 0.1 # Assume EBS costs $0.1/GB/month, true as of June 2019 for gp2 type storage
+    return total_gb * 0.1  # Assume EBS costs $0.1/GB/month, true as of Dec 2021 for gp2 type storage
 
 
 # Set a tag on an instance
-def set_tag(region_name: str, instance_id: str, tag_name: str, tag_value: str) -> None:
+def set_tag(region_name: str, instance_id: str, tag_name: str, tag_value: str, dryrun: bool = True) -> None:
     ec2 = boto3.client('ec2', region_name=region_name)
     print(f'Setting tag {tag_value} on instance: {instance_id} in region {region_name}')
-    response = ec2.create_tags(Resources=[instance_id], Tags=[{
-        'Key': tag_name,
-        'Value': tag_value
-    }])
-    print(f'Response from create_tags: {str(response)}')
+    if not dryrun:
+        response = ec2.create_tags(Resources=[instance_id], Tags=[{
+            'Key': tag_name,
+            'Value': tag_value
+        }])
+        print(f'Response from create_tags: {str(response)}')
 
 
 # Stop an EC2 instance
-def stop_instance(region_name: str, instance_id: str) -> bool:
+def stop_instance(region_name: str, instance_id: str, dryrun: bool = True) -> bool:
     print(f'Stopping instance: {str(instance_id)}...')
     ec2 = boto3.client('ec2', region_name=region_name)
     try:
-        response = ec2.stop_instances(InstanceIds=[instance_id])
-        print(f'Response from stop_instances: {str(response)}')
+        if not dryrun:
+            response = ec2.stop_instances(InstanceIds=[instance_id])
+            print(f'Response from stop_instances: {str(response)}')
         return True
     except Exception as e:
         print(f'Failure when calling stop_instances: {str(e)}')
@@ -175,17 +178,14 @@ def stop_instance(region_name: str, instance_id: str) -> bool:
 
 
 # Terminate an EC2 instance
-def terminate_instance(region_name: str, instance_id: str) -> bool:
+def terminate_instance(region_name: str, instance_id: str, dryrun: bool = True) -> bool:
     print(f'Terminating instance: {str(instance_id)}...')
     ec2 = boto3.client('ec2', region_name=region_name)
     try:
-        response = ec2.terminate_instances(InstanceIds=[instance_id])
-        print(f'Response from terminate_instances: {str(response)}')
+        if not dryrun:
+            response = ec2.terminate_instances(InstanceIds=[instance_id])
+            print(f'Response from terminate_instances: {str(response)}')
         return True
     except Exception as e:
         print(f'Failure when calling terminate_instances: {str(e)}')
         return False
-
-
-if __name__ == '__main__':
-    main()

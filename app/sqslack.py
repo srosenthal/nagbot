@@ -13,15 +13,16 @@ def send_message(channel, message):
 def lookup_user_by_email(email):
     """ Look up a user by email
     :param email: an email address
-    :return: If the user was identified, the ID of the user in such a way that Slack will render it as an "@user" tag.
+    :return: If the user was identified, the ID of the user in such a way that Slack will render it as a "@user" tag.
              If the user could not be identified, the email will be return as-is.
     """
+    # noinspection PyBroadException
     try:
         slack_client = get_client()
         result = slack_client.users_lookupByEmail(email=email)
-        id = result.data['user']['id'] # Looks like: UJ0JNCX19, tag the user in a message like <@UJ0JNCX19>
-        return '<@' + id + '>'
-    except:
+        user_id = result.data['user']['id']  # Looks like: UJ0JNCX19, tag the user in a message like <@UJ0JNCX19>
+        return '<@' + user_id + '>'
+    except Exception:
         return email
 
 

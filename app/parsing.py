@@ -3,26 +3,30 @@ from dataclasses import dataclass
 from datetime import datetime
 
 
+from typing import Optional
+
+
 # Return a datetime.datetime formatted date, or None if the string is not a date
-def parse_date(str: str) -> datetime:
+def parse_date(date_str: str) -> Optional[datetime]:
+    # noinspection PyBroadException
     try:
-        return datetime.strptime(str, '%Y-%m-%d')
-    except:
+        return datetime.strptime(date_str, '%Y-%m-%d')
+    except Exception:
         return None
 
 
 # Take a datetime.datetime and return a string in the appropriate format
-def date_to_string(datetime: datetime) -> str:
-    if datetime is None:
+def date_to_string(datetime_value: datetime) -> Optional[str]:
+    if datetime_value is None:
         return None
-    return datetime.strftime('%Y-%m-%d')
+    return datetime_value.strftime('%Y-%m-%d')
 
 
 @dataclass
 class ParsedDate:
-    expiry_date: str   # Looks like: 2019-12-31
+    expiry_date: Optional[str]   # Looks like: 2019-12-31
     on_weekends: bool
-    warning_date: str  # Looks like: 2019-12-31
+    warning_date: Optional[str]  # Looks like: 2019-12-31
 
     def __str__(self) -> str:
         if self.on_weekends:
@@ -30,12 +34,11 @@ class ParsedDate:
         elif self.expiry_date is not None:
             result = self.expiry_date
         else:
-            result = '';
+            result = ''
 
         if self.warning_date is not None:
             result += ' (Nagbot: Warned on ' + self.warning_date + ')'
         return result
-
 
 
 def parse_date_tag(date_tag: str) -> ParsedDate:
