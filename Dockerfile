@@ -7,6 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app app
 
+ENV PYTHONUNBUFFERED=1
+
 ENV SLACK_BOT_TOKEN=''
 ENV GDOCS_SERVICE_ACCOUNT_FILENAME=''
 ENV AWS_ACCESS_KEY_ID=''
