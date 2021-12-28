@@ -11,7 +11,7 @@ from . import gdocs
 from . import parsing
 from . import sqaws
 from . import sqslack
-from .sqaws import money_to_string
+from .sqaws import money_to_string, Instance
 from .pricing import PricingData
 
 TERMINATION_WARNING_DAYS = 3
@@ -171,10 +171,12 @@ def is_terminatable(instance):
 
 
 # Some instances are excluded from stop or terminate actions. These won't show up as recommendations to stop/terminate.
-def is_excluded(instance):
+def is_excluded(instance: Instance):
     for regex in [r'bam::.*bamboo']:
         if re.fullmatch(regex, instance.name) is not None:
             return True
+    if len(instance.eks_nodegroup_name) > 0:
+        return True
     return False
 
 

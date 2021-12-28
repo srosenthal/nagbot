@@ -23,6 +23,7 @@ class Instance:
     reason: str
     instance_type: str
     name: str
+    eks_nodegroup_name: str
     operating_system: str
     stop_after: str
     terminate_after: str
@@ -47,7 +48,8 @@ class Instance:
                 'Region Name',
                 'Instance Type',
                 'Reason',
-                'OS']
+                'OS',
+                'EKS Nodegroup']
 
     def to_list(self) -> [str]:
         return [self.instance_id,
@@ -63,7 +65,8 @@ class Instance:
                 self.region_name,
                 self.instance_type,
                 self.reason,
-                self.operating_system]
+                self.operating_system,
+                self.eks_nodegroup_name]
 
 
 # Get a list of model classes representing important properties of EC2 instances
@@ -96,7 +99,8 @@ def build_instance_model(pricing: PricingData, region_name: str, instance_dict: 
     state = instance_dict['State']['Name']
     state_reason = instance_dict.get('StateTransitionReason', '')
     instance_type = instance_dict['InstanceType']
-    name = tags.get('Name', '')
+    eks_nodegroup_name = tags.get('eks:nodegroup-name', '')
+    name = tags.get('Name', eks_nodegroup_name)
     platform = instance_dict.get('Platform', '')
     operating_system = ('Windows' if platform == 'windows' else 'Linux')
 
@@ -114,6 +118,7 @@ def build_instance_model(pricing: PricingData, region_name: str, instance_dict: 
                     state=state,
                     reason=state_reason,
                     instance_type=instance_type,
+                    eks_nodegroup_name=eks_nodegroup_name,
                     name=name,
                     operating_system=operating_system,
                     monthly_price=monthly_price,
