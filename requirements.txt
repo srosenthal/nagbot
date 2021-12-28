@@ -1,4 +1,4 @@
-awspricing==2.0.0
-boto3==1.9.157
-slackclient==2.0.1
-pygsheets==2.0.1
+awspricing==2.0.3
+boto3==1.20.26
+slackclient==2.9.3
+pygsheets==2.0.5
