@@ -149,13 +149,14 @@ def get_stoppable_instances(instances):
     return list(i for i in instances if is_stoppable(i))
 
 
-def is_stoppable(instance):
+def is_stoppable(instance, is_weekend=TODAY_IS_WEEKEND):
     parsed_date: parsing.ParsedDate = parsing.parse_date_tag(instance.stop_after)
 
     return instance.state == 'running' and (
-            (parsed_date.expiry_date is None)  # Treat unspecified "Stop after" dates as being in the past
-            or (TODAY_IS_WEEKEND and parsed_date.on_weekends)
-            or (TODAY_YYYY_MM_DD >= parsed_date.expiry_date))
+            # Treat unspecified "Stop after" dates as being in the past
+            (parsed_date.expiry_date is None and not parsed_date.on_weekends)
+            or (parsed_date.on_weekends and is_weekend)
+            or (parsed_date.expiry_date is not None and TODAY_YYYY_MM_DD >= parsed_date.expiry_date))
 
 
 def get_terminatable_instances(instances):
@@ -180,9 +181,9 @@ def is_excluded(instance: Instance):
     return False
 
 
-def is_safe_to_stop(instance):
+def is_safe_to_stop(instance, is_weekend=TODAY_IS_WEEKEND):
     warning_date = parsing.parse_date_tag(instance.stop_after).warning_date
-    return is_stoppable(instance) \
+    return is_stoppable(instance, is_weekend=is_weekend) \
         and warning_date is not None and warning_date <= TODAY_YYYY_MM_DD
 
 

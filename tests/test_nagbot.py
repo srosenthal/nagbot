@@ -26,11 +26,13 @@ class TestNagbot(unittest.TestCase):
     def test_stoppable(self):
         past_date = self.setup_instance(state='running', stop_after='2019-01-01')
         today_date = self.setup_instance(state='running', stop_after=nagbot.TODAY_YYYY_MM_DD)
+        on_weekends = self.setup_instance(state='running', stop_after='On Weekends')
 
         warning_str = ' (Nagbot: Warned on ' + nagbot.TODAY_YYYY_MM_DD + ')'
         past_date_warned = self.setup_instance(state='running', stop_after='2019-01-01' + warning_str)
         today_date_warned = self.setup_instance(state='running', stop_after=nagbot.TODAY_YYYY_MM_DD + warning_str)
         anything_warned = self.setup_instance(state='running', stop_after='Yummy Udon Noodles' + warning_str)
+        on_weekends_warned = self.setup_instance(state='running', stop_after='On Weekends' + warning_str)
 
         wrong_state = self.setup_instance(state='stopped', stop_after='2019-01-01')
         future_date = self.setup_instance(state='running', stop_after='2050-01-01')
@@ -39,18 +41,23 @@ class TestNagbot(unittest.TestCase):
         # These instances should get a stop warning
         assert nagbot.is_stoppable(past_date) is True
         assert nagbot.is_stoppable(today_date) is True
+        assert nagbot.is_stoppable(on_weekends, is_weekend=True) is True
         assert nagbot.is_stoppable(unknown_date) is True
         assert nagbot.is_stoppable(past_date_warned) is True
         assert nagbot.is_stoppable(today_date_warned) is True
         assert nagbot.is_stoppable(anything_warned) is True
+        assert nagbot.is_stoppable(on_weekends_warned, is_weekend=True) is True
 
         # These instances should NOT get a stop warning
+        assert nagbot.is_stoppable(on_weekends, is_weekend=False) is False
+        assert nagbot.is_stoppable(on_weekends_warned, is_weekend=False) is False
         assert nagbot.is_stoppable(wrong_state) is False
         assert nagbot.is_stoppable(future_date) is False
 
         # These instances don't have a warning, so they shouldn't be stopped yet
         assert nagbot.is_safe_to_stop(past_date) is False
         assert nagbot.is_safe_to_stop(today_date) is False
+        assert nagbot.is_safe_to_stop(on_weekends, is_weekend=True) is False
         assert nagbot.is_safe_to_stop(unknown_date) is False
         assert nagbot.is_safe_to_stop(wrong_state) is False
         assert nagbot.is_safe_to_stop(future_date) is False
@@ -58,6 +65,7 @@ class TestNagbot(unittest.TestCase):
         # These instances can be stopped right away
         assert nagbot.is_safe_to_stop(past_date_warned) is True
         assert nagbot.is_safe_to_stop(today_date_warned) is True
+        assert nagbot.is_safe_to_stop(on_weekends_warned, is_weekend=True) is True
         assert nagbot.is_safe_to_stop(anything_warned) is True
 
     def test_terminatable(self):
