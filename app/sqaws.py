@@ -146,7 +146,7 @@ def estimate_monthly_ebs_storage_price(region_name: str, instance_id: str) -> fl
 
 
 # Set a tag on an instance
-def set_tag(region_name: str, instance_id: str, tag_name: str, tag_value: str, dryrun: bool = True) -> None:
+def set_tag(region_name: str, instance_id: str, tag_name: str, tag_value: str, dryrun: bool) -> None:
     ec2 = boto3.client('ec2', region_name=region_name)
     print(f'Setting tag {tag_value} on instance: {instance_id} in region {region_name}')
     if not dryrun:
@@ -158,7 +158,7 @@ def set_tag(region_name: str, instance_id: str, tag_name: str, tag_value: str, d
 
 
 # Stop an EC2 instance
-def stop_instance(region_name: str, instance_id: str, dryrun: bool = True) -> bool:
+def stop_instance(region_name: str, instance_id: str, dryrun: bool) -> bool:
     print(f'Stopping instance: {str(instance_id)}...')
     ec2 = boto3.client('ec2', region_name=region_name)
     try:
@@ -172,7 +172,7 @@ def stop_instance(region_name: str, instance_id: str, dryrun: bool = True) -> bo
 
 
 # Terminate an EC2 instance
-def terminate_instance(region_name: str, instance_id: str, dryrun: bool = True) -> bool:
+def terminate_instance(region_name: str, instance_id: str, dryrun: bool) -> bool:
     print(f'Terminating instance: {str(instance_id)}...')
     ec2 = boto3.client('ec2', region_name=region_name)
     try:

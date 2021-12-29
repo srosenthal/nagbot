@@ -88,7 +88,7 @@ class Nagbot(object):
                 stop_msg += make_instance_summary(i) + ', "Stop after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
                 sqaws.set_tag(i.region_name, i.instance_id, 'Stop after',
-                              parsing.add_warning_to_tag(i.stop_after, TODAY_YYYY_MM_DD, replace=True))
+                              parsing.add_warning_to_tag(i.stop_after, TODAY_YYYY_MM_DD, replace=True), dryrun=dryrun)
         else:
             stop_msg = 'No instances are due to be stopped at this time.\n'
         sqslack.send_message(channel, stop_msg)
@@ -131,8 +131,9 @@ class Nagbot(object):
                 contact = sqslack.lookup_user_by_email(i.contact)
                 message = message + make_instance_summary(i) + ', "Stop after"={}, "Monthly Price"={}, Contact={}\n' \
                     .format(i.stop_after, money_to_string(i.monthly_price), contact)
-                sqaws.stop_instance(i.region_name, i.instance_id)
-                sqaws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stopped on ' + TODAY_YYYY_MM_DD)
+                sqaws.stop_instance(i.region_name, i.instance_id, dryrun=dryrun)
+                sqaws.set_tag(i.region_name, i.instance_id, 'Nagbot State', 'Stopped on ' + TODAY_YYYY_MM_DD,
+                              dryrun=dryrun)
             sqslack.send_message(channel, message)
         else:
             sqslack.send_message(channel, 'No instances were stopped today.')
