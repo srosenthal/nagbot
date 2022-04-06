@@ -1,5 +1,5 @@
 __author__ = "Stephen Rosenthal"
-__version__ = "1.7.2"
+__version__ = "1.7.3"
 __license__ = "MIT"
 
 import argparse
