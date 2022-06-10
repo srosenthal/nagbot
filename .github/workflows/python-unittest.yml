@@ -18,4 +18,4 @@ jobs:
           ${{ runner.os }}-venv-
     - run: python -m venv ./venv && source ./venv/bin/activate && pip install -r requirements.txt
       if: steps.cache-venv.outputs.cache-hit != 'true'
-    - run: source ./venv/bin/activate && python -m unittest
+    - run: source ./venv/bin/activate && pytest
