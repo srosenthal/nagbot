@@ -18,6 +18,10 @@ Nagbot does the following:
 Here's what a Nagbot notification looks like in Slack:
 ![Example of Nagbot's Slack message](https://github.com/srosenthal/nagbot/blob/master/nagbot-slack.png "Example of Nagbot's Slack message")
 
+# Setting up Slack for Nagbot
+
+Here is a [recording of the process to setup a Slack app](https://seeq.zoom.us/rec/share/qgmqAvz_2eV3SYiNJO4mLrQlH94eGXSs89BDSl28Epl-Bjey9_DgvBLnkF3W2dOf.Zd12Sq-G5QbsOPrt) (Passcode: z?mJ%d08). The process frequently changes due to Slack changing the UI for applications.
+
 # Releasing New Versions
 
 Update the version at the top of nagbot.py to vX.Y.Z, commit, and push your changes
