@@ -1,3 +1,4 @@
 boto3==1.20.26
 slackclient==2.9.3
 pygsheets==2.0.5
+pytest==7.1.2
