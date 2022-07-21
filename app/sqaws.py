@@ -72,26 +72,78 @@ class Instance:
                 self.eks_nodegroup_name]
 
 
-# Get a list of model classes representing important properties of EC2 instances
-def list_ec2_instances(pricing: PricingData):
+@dataclass
+class Volume:
+    region_name: str
+    volume_id: str
+    state: str
+    volume_type: str
+    size: float
+    iops: float
+    throughput: float
+    name: str
+    operating_system: str
+    terminate_after: str
+    contact: str
+    monthly_price: float
+    terminate_after_tag_name: str
+
+    @staticmethod
+    def to_header() -> [str]:
+        return ['Volume ID',
+                'Name',
+                'State',
+                'Terminate After',
+                'Contact',
+                'Monthly Price',
+                'Region Name',
+                'Volume Type',
+                'OS'
+                'Size',
+                'IOPS',
+                'Throughput']
+
+    def to_list(self) -> [str]:
+        return [self.volume_id,
+                self.name,
+                self.state,
+                self.terminate_after,
+                self.contact,
+                self.monthly_price,
+                self.region_name,
+                self.volume_type,
+                self.operating_system,
+                self.size,
+                self.iops,
+                self.throughput]
+
+
+# Get a list of model classes representing important properties of EC2 resources
+def list_ec2_resources(pricing: PricingData) -> tuple:
     ec2 = boto3.client('ec2', region_name='us-west-2')
 
     describe_regions_response = ec2.describe_regions()
     instances = []
-    i = 1
+    volumes = []
+
     print('Checking all AWS regions...')
     for region in describe_regions_response['Regions']:
-        # print('region = ' + str(region))
         region_name = region['RegionName']
         ec2 = boto3.client('ec2', region_name=region_name)
+
         describe_instances_response = ec2.describe_instances()
+        describe_volumes_response = ec2.describe_volumes()
+
         for reservation in describe_instances_response['Reservations']:
             for instance_dict in reservation['Instances']:
                 instance = build_instance_model(pricing, region_name, instance_dict)
                 instances.append(instance)
-                # print(str(i) + ': ' + str(instance))
-                i += 1
-    return instances
+
+        for volume_dict in describe_volumes_response['Volumes']:
+            volume = build_volume_model(region_name, volume_dict)
+            volumes.append(volume)
+
+    return instances, volumes
 
 
 # Get the info about a single EC2 instance
@@ -108,7 +160,7 @@ def build_instance_model(pricing: PricingData, region_name: str, instance_dict: 
     operating_system = ('Windows' if platform == 'windows' else 'Linux')
 
     monthly_server_price = pricing.lookup_monthly_price(region_name, instance_type, operating_system)
-    monthly_storage_price = estimate_monthly_ebs_storage_price(region_name, instance_dict['InstanceId'])
+    monthly_storage_price = estimate_monthly_volume_price(region_name, instance_dict['InstanceId'], 'none', 0, 0, 0)
     monthly_price = (monthly_server_price + monthly_storage_price) if state == 'running' else monthly_storage_price
 
     stop_after_tag_name, terminate_after_tag_name, nagbot_state_tag_name = get_tag_names(tags)
@@ -135,6 +187,44 @@ def build_instance_model(pricing: PricingData, region_name: str, instance_dict: 
                     stop_after_tag_name=stop_after_tag_name,
                     terminate_after_tag_name=terminate_after_tag_name,
                     nagbot_state_tag_name=nagbot_state_tag_name)
+
+
+# Get the info about a single EBS volume
+def build_volume_model(region_name: str, volume_dict: dict) -> Volume:
+    tags = make_tags_dict(volume_dict.get('Tags', []))
+
+    volume_id = volume_dict['VolumeId']
+    state = volume_dict['State']
+    volume_type = volume_dict['VolumeType']
+    name = tags.get('Name', '')
+    platform = volume_dict.get('Platform', '')
+    operating_system = ('Windows' if platform == 'windows' else 'Linux')
+    size = volume_dict['Size']
+    iops = volume_dict.get('Iops', '')
+    throughput = volume_dict.get('Throughput', '')
+
+    monthly_price = estimate_monthly_volume_price(region_name, volume_id, volume_type, size, iops, throughput)
+
+    terminate_after_tag_name = 'TerminateAfter'
+    for key, value in tags.items():
+        if (key.lower()).startswith('terminate') and 'after' in (key.lower()):
+            terminate_after_tag_name = key
+    terminate_after = tags.get(terminate_after_tag_name, '')
+    contact = tags.get('Contact', '')
+
+    return Volume(region_name=region_name,
+                  volume_id=volume_id,
+                  state=state,
+                  volume_type=volume_type,
+                  name=name,
+                  operating_system=operating_system,
+                  monthly_price=monthly_price,
+                  terminate_after=terminate_after,
+                  contact=contact,
+                  terminate_after_tag_name=terminate_after_tag_name,
+                  size=size,
+                  iops=iops,
+                  throughput=throughput)
 
 
 # Get 'stop after', 'terminate after', and 'Nagbot state' tag names in an EC2 instance, regardless of formatting
@@ -165,12 +255,33 @@ def estimate_monthly_ebs_storage_price(region_name: str, instance_id: str) -> fl
     return total_gb * 0.1  # Assume EBS costs $0.1/GB/month, true as of Dec 2021 for gp2 type storage
 
 
-# Set a tag on an instance
-def set_tag(region_name: str, instance_id: str, tag_name: str, tag_value: str, dryrun: bool) -> None:
+# Estimate the monthly cost of an EBS storage volume; pricing estimations based on region us-east-1
+def estimate_monthly_volume_price(region_name: str, instance_id: str, volume_type: str, size: float, iops: float,
+                                  throughput: float) -> float:
+    if instance_id.startswith('i'):
+        ec2_resource = boto3.resource('ec2', region_name=region_name)
+        total_gb = sum([v.size for v in ec2_resource.Instance(instance_id).volumes.all()])
+        return total_gb * 0.1  # Assume EBS costs $0.1/GB/month when calculating for attached volumes
+
+    if 'gp3' in volume_type:  # gp3 type storage depends on storage, IOPS, and throughput
+        cost = size * 0.08
+        if iops > 3000:
+            provisioned_iops = iops - 3000
+            cost = cost + (provisioned_iops * 0.005)
+        if throughput > 125:
+            provisioned_throughput = throughput - 125
+            cost = cost + (provisioned_throughput * 0.04)
+        return cost
+    else:  # Assume EBS costs $0.1/GB/month, true as of Dec 2021 for gp2 type storage
+        return size * 0.1
+
+
+# Set a tag
+def set_tag(region_name: str, type_ec2: str, id_name: str, tag_name: str, tag_value: str, dryrun: bool) -> None:
     ec2 = boto3.client('ec2', region_name=region_name)
-    print(f'Setting tag {tag_value} on instance: {instance_id} in region {region_name}')
+    print(f'Setting tag {tag_value} on {type_ec2}: {id_name} in region {region_name}')
     if not dryrun:
-        response = ec2.create_tags(Resources=[instance_id], Tags=[{
+        response = ec2.create_tags(Resources=[id_name], Tags=[{
             'Key': tag_name,
             'Value': tag_value
         }])
@@ -202,4 +313,18 @@ def terminate_instance(region_name: str, instance_id: str, dryrun: bool) -> bool
         return True
     except Exception as e:
         print(f'Failure when calling terminate_instances: {str(e)}')
+        return False
+
+
+# Delete an EBS volume
+def delete_volume(region_name: str, volume_id: str, dryrun: bool) -> bool:
+    print(f'Deleting volume: {str(volume_id)}...')
+    ec2 = boto3.client('ec2', region_name=region_name)
+    try:
+        if not dryrun:
+            response = ec2.delete_volume(VolumeId=volume_id)
+            print(f'Response from delete_volumes: {str(response)}')
+        return True
+    except Exception as e:
+        print(f'Failure when calling delete_volumes: {str(e)}')
         return False

@@ -1,7 +1,7 @@
 import unittest
 
 from app import nagbot
-from app.sqaws import Instance
+from app.sqaws import Instance, Volume
 
 
 class TestNagbot(unittest.TestCase):
@@ -26,6 +26,22 @@ class TestNagbot(unittest.TestCase):
                         stop_after_tag_name=stop_after_tag_name,
                         terminate_after_tag_name=terminate_after_tag_name,
                         nagbot_state_tag_name='NagbotState')
+
+    @staticmethod
+    def setup_volume(state: str, terminate_after: str = '', terminate_after_tag_name: str = ''):
+        return Volume(region_name='us-east-1',
+                      volume_id='def456',
+                      state=state,
+                      volume_type='gp2',
+                      name='Quinn',
+                      operating_system='Windows',
+                      monthly_price=1,
+                      terminate_after=terminate_after,
+                      contact='quinn',
+                      terminate_after_tag_name=terminate_after_tag_name,
+                      size=1,
+                      iops=1,
+                      throughput=125)
 
     def test_stoppable(self):
         past_date = self.setup_instance(state='running', stop_after='2019-01-01')
@@ -120,6 +136,56 @@ class TestNagbot(unittest.TestCase):
 
         # These instances can be terminated now
         assert nagbot.is_safe_to_terminate(past_date_warned_days_ago) is True
+
+    def test_deletable(self):
+        past_date = self.setup_volume(state='available', terminate_after='2019-01-01')
+        today_date = self.setup_volume(state='available', terminate_after=nagbot.TODAY_YYYY_MM_DD)
+
+        today_warning_str = ' (Nagbot: Warned on ' + nagbot.TODAY_YYYY_MM_DD + ')'
+        past_date_warned = self.setup_volume(state='available', terminate_after='2019-01-01' + today_warning_str)
+        today_date_warned = self.setup_volume(state='available',
+                                              terminate_after=nagbot.TODAY_YYYY_MM_DD + today_warning_str)
+        anything_warned = self.setup_volume(state='available', terminate_after='I Like Pie' + today_warning_str)
+
+        old_warning_str = ' (Nagbot: Warned on ' + nagbot.MIN_TERMINATION_WARNING_YYYY_MM_DD + ')'
+        past_date_warned_days_ago = self.setup_volume(state='available', terminate_after='2019-01-01' +
+                                                      old_warning_str)
+        anything_warned_days_ago = self.setup_volume(state='available', terminate_after='I Like Pie' +
+                                                     old_warning_str)
+
+        wrong_state = self.setup_volume(state='in-use', terminate_after='2019-01-01')
+        future_date = self.setup_volume(state='available', terminate_after='2050-01-01')
+        unknown_date = self.setup_volume(state='available', terminate_after='TBD')
+
+        # These volumes should get a deletion warning
+        assert nagbot.is_deletable(past_date) is True
+        assert nagbot.is_deletable(today_date) is True
+        assert nagbot.is_deletable(past_date_warned) is True
+        assert nagbot.is_deletable(today_date_warned) is True
+
+        # These volumes should NOT get a deletion warning
+        assert nagbot.is_deletable(wrong_state) is False
+        assert nagbot.is_deletable(future_date) is False
+        assert nagbot.is_deletable(unknown_date) is False
+        assert nagbot.is_deletable(anything_warned) is False
+
+        # These volumes don't have a warning, so they shouldn't be deleted yet
+        assert nagbot.is_safe_to_delete(past_date) is False
+        assert nagbot.is_safe_to_delete(today_date) is False
+        assert nagbot.is_safe_to_delete(unknown_date) is False
+        assert nagbot.is_safe_to_delete(wrong_state) is False
+        assert nagbot.is_safe_to_delete(future_date) is False
+        assert nagbot.is_safe_to_delete(anything_warned) is False
+
+        # These volumes can be deleted, but not yet
+        assert nagbot.is_safe_to_delete(past_date_warned) is False
+        assert nagbot.is_safe_to_delete(today_date_warned) is False
+
+        # These volumes have a warning, but are not eligible to add a warning, so we don't delete
+        assert nagbot.is_safe_to_delete(anything_warned_days_ago) is False
+
+        # These volumes can be deleted now
+        assert nagbot.is_safe_to_delete(past_date_warned_days_ago) is True
 
     def test_instance_stop_terminate_str(self):
         lowercase_instance = self.setup_instance(state='running', stop_after_tag_name='stopafter',

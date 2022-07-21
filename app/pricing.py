@@ -1,4 +1,5 @@
 import json
+import traceback
 
 import boto3
 
@@ -12,8 +13,8 @@ class PricingData:
 
     def lookup_monthly_price(self, region_name: str, instance_type: str, operating_system: str) -> float:
         try:
-            # Use the AWS API to estimate the monthly price of an instance, assuming used all month, as hourly, on-demand,
-            # with no special software (like SQL), and no reservations
+            # Use the AWS API to estimate the monthly price of an instance, assuming used all month, as hourly,
+            # on-demand, with no special software (like SQL), and no reservations
             cache_key = (region_name, instance_type, operating_system)
             if cache_key not in self.cache:
                 # See https://www.sentiatechblog.com/using-the-ec2-price-list-api for why this is so complicated

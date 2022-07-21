@@ -25,9 +25,10 @@ def test_set_tag(mock_client):
     instance_id = 'i-0f06b49c1f16dcfde'
     tag_name = 'Stop after'
     tag_value = '2019-12-25'
+    ec2_type = 'instance'
     mock_ec2 = mock_client.return_value
 
-    app.sqaws.set_tag(region_name, instance_id, tag_name, tag_value, dryrun=False)
+    app.sqaws.set_tag(region_name, ec2_type, instance_id, tag_name, tag_value, dryrun=False)
 
     mock_client.assert_called_once_with('ec2', region_name=region_name)
     mock_ec2.create_tags.assert_called_once_with(Resources=[instance_id], Tags=[{
@@ -93,6 +94,34 @@ def test_terminate_instance_exception(mock_client):
 
     mock_client.assert_called_once_with('ec2', region_name=region_name)
     mock_ec2.terminate_instances.assert_called_once_with(InstanceIds=[instance_id])
+
+
+@patch('app.sqaws.boto3.client')
+def test_delete_volume(mock_client):
+    region_name = 'us-east-1'
+    volume_id = 'vol-091303dbe44e6914d'
+    mock_ec2 = mock_client.return_value
+
+    assert app.sqaws.delete_volume(region_name, volume_id, dryrun=False)
+
+    mock_client.assert_called_once_with('ec2', region_name=region_name)
+    mock_ec2.delete_volume.assert_called_once_with(VolumeId=volume_id)
+
+
+@patch('app.sqaws.boto3.client')
+def test_delete_volume_exception(mock_client):
+    def raise_error():
+        raise RuntimeError('An error occurred (OperationNotPermitted)...')
+
+    region_name = 'us-east-1'
+    volume_id = 'vol-091303dbe44e6914d'
+    mock_ec2 = mock_client.return_value
+    mock_ec2.delete_volume.side_effect = lambda *args, **kw: raise_error()
+
+    assert not app.sqaws.delete_volume(region_name, volume_id, dryrun=False)
+
+    mock_client.assert_called_once_with('ec2', region_name=region_name)
+    mock_ec2.delete_volume.assert_called_once_with(VolumeId=volume_id)
 
 
 @pytest.mark.parametrize('test_dict, expected_stop_result, expected_terminate_result, expected_nagbot_state, '
