@@ -1,6 +1,8 @@
 from unittest.mock import patch
 
-import app.sqaws
+import app.resource
+import app.volume
+import app.instance
 
 import pytest
 
@@ -11,7 +13,7 @@ def test_make_tags_dict():
                  {'Key': 'Terminate after', 'Value': '2021-01-01'},
                  {'Key': 'Name', 'Value': 'super-cool-server.seeq.com'}]
 
-    tags_dict = app.sqaws.make_tags_dict(tags_list)
+    tags_dict = app.resource.make_tags_dict(tags_list)
 
     assert tags_dict == {'Contact': 'stephen.rosenthal@seeq.com',
                          'Stop after': '2020-01-01',
@@ -19,7 +21,7 @@ def test_make_tags_dict():
                          'Name': 'super-cool-server.seeq.com'}
 
 
-@patch('app.sqaws.boto3.client')
+@patch('app.resource.boto3.client')
 def test_set_tag(mock_client):
     region_name = 'us-east-1'
     instance_id = 'i-0f06b49c1f16dcfde'
@@ -28,7 +30,7 @@ def test_set_tag(mock_client):
     ec2_type = 'instance'
     mock_ec2 = mock_client.return_value
 
-    app.sqaws.set_tag(region_name, ec2_type, instance_id, tag_name, tag_value, dryrun=False)
+    app.resource.set_tag(region_name, ec2_type, instance_id, tag_name, tag_value, dryrun=False)
 
     mock_client.assert_called_once_with('ec2', region_name=region_name)
     mock_ec2.create_tags.assert_called_once_with(Resources=[instance_id], Tags=[{
@@ -37,19 +39,19 @@ def test_set_tag(mock_client):
     }])
 
 
-@patch('app.sqaws.boto3.client')
+@patch('app.resource.boto3.client')
 def test_stop_instance(mock_client):
     region_name = 'us-east-1'
     instance_id = 'i-0f06b49c1f16dcfde'
     mock_ec2 = mock_client.return_value
 
-    assert app.sqaws.stop_instance(region_name, instance_id, dryrun=False)
+    assert app.resource.stop_resource(region_name, instance_id, dryrun=False)
 
     mock_client.assert_called_once_with('ec2', region_name=region_name)
     mock_ec2.stop_instances.assert_called_once_with(InstanceIds=[instance_id])
 
 
-@patch('app.sqaws.boto3.client')
+@patch('app.resource.boto3.client')
 def test_stop_instance_exception(mock_client):
     # Note: I haven't seen the call to stop_instance fail, but it certainly could.
     def raise_error():
@@ -60,68 +62,10 @@ def test_stop_instance_exception(mock_client):
     mock_ec2 = mock_client.return_value
     mock_ec2.stop_instances.side_effect = lambda *args, **kw: raise_error()
 
-    assert not app.sqaws.stop_instance(region_name, instance_id, dryrun=False)
+    assert not app.resource.stop_resource(region_name, instance_id, dryrun=False)
 
     mock_client.assert_called_once_with('ec2', region_name=region_name)
     mock_ec2.stop_instances.assert_called_once_with(InstanceIds=[instance_id])
-
-
-@patch('app.sqaws.boto3.client')
-def test_terminate_instance(mock_client):
-    region_name = 'us-east-1'
-    instance_id = 'i-0f06b49c1f16dcfde'
-    mock_ec2 = mock_client.return_value
-
-    assert app.sqaws.terminate_instance(region_name, instance_id, dryrun=False)
-
-    mock_client.assert_called_once_with('ec2', region_name=region_name)
-    mock_ec2.terminate_instances.assert_called_once_with(InstanceIds=[instance_id])
-
-
-@patch('app.sqaws.boto3.client')
-def test_terminate_instance_exception(mock_client):
-    # Note: I've seen the call to terminate_instance fail when termination protection is enabled
-    def raise_error():
-        # The real Boto SDK raises botocore.exceptions.ClientError, but this is close enough
-        raise RuntimeError('An error occurred (OperationNotPermitted)...')
-
-    region_name = 'us-east-1'
-    instance_id = 'i-0f06b49c1f16dcfde'
-    mock_ec2 = mock_client.return_value
-    mock_ec2.terminate_instances.side_effect = lambda *args, **kw: raise_error()
-
-    assert not app.sqaws.terminate_instance(region_name, instance_id, dryrun=False)
-
-    mock_client.assert_called_once_with('ec2', region_name=region_name)
-    mock_ec2.terminate_instances.assert_called_once_with(InstanceIds=[instance_id])
-
-
-@patch('app.sqaws.boto3.client')
-def test_delete_volume(mock_client):
-    region_name = 'us-east-1'
-    volume_id = 'vol-091303dbe44e6914d'
-    mock_ec2 = mock_client.return_value
-
-    assert app.sqaws.delete_volume(region_name, volume_id, dryrun=False)
-
-    mock_client.assert_called_once_with('ec2', region_name=region_name)
-    mock_ec2.delete_volume.assert_called_once_with(VolumeId=volume_id)
-
-
-@patch('app.sqaws.boto3.client')
-def test_delete_volume_exception(mock_client):
-    def raise_error():
-        raise RuntimeError('An error occurred (OperationNotPermitted)...')
-
-    region_name = 'us-east-1'
-    volume_id = 'vol-091303dbe44e6914d'
-    mock_ec2 = mock_client.return_value
-    mock_ec2.delete_volume.side_effect = lambda *args, **kw: raise_error()
-
-    assert not app.sqaws.delete_volume(region_name, volume_id, dryrun=False)
-
-    mock_client.assert_called_once_with('ec2', region_name=region_name)
-    mock_ec2.delete_volume.assert_called_once_with(VolumeId=volume_id)
 
 
 @pytest.mark.parametrize('test_dict, expected_stop_result, expected_terminate_result, expected_nagbot_state, '
@@ -153,8 +97,7 @@ def test_delete_volume_exception(mock_client):
                          ])
 def test_get_tag_names(test_dict, expected_stop_result, expected_terminate_result, expected_nagbot_state,
                        expected_stop_tag_name, expected_terminate_tag_name, expected_nagbot_state_tag_name):
-    stop_after_tag_name, terminate_after_tag_name, nagbot_state_tag_name = \
-        app.sqaws.get_tag_names(test_dict)
+    stop_after_tag_name, terminate_after_tag_name, nagbot_state_tag_name = app.resource.get_tag_names(test_dict)
     stop_after = test_dict.get(stop_after_tag_name, '')
     terminate_after = test_dict.get(terminate_after_tag_name, '')
     nagbot_state = test_dict.get(nagbot_state_tag_name, '')
