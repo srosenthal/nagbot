@@ -1,5 +1,5 @@
 __author__ = "Stephen Rosenthal"
-__version__ = "1.10.0"
+__version__ = "1.10.1"
 __license__ = "MIT"
 
 import argparse
@@ -60,7 +60,7 @@ class Nagbot(object):
                                 % len(resources_to_terminate)
                 for r in resources_to_terminate:
                     contact = sqslack.lookup_user_by_email(r.contact)
-                    summary_msg += r.make_resource_summmary() + \
+                    summary_msg += r.make_resource_summary() + \
                         ', "Terminate after"={}, "Monthly Price"={}, Contact={}\n' \
                         .format(r.terminate_after, money_to_string(r.monthly_price), contact)
                     resource.set_tag(r.region_name, r.ec2_type, r.resource_id, r.terminate_after_tag_name,
