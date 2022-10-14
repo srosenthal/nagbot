@@ -37,10 +37,17 @@ class TestInstance(unittest.TestCase):
         running_no_stop_after = self.setup_instance(state='running')
         stopped_no_stop_after = self.setup_instance(state='stopped')
         past_date = self.setup_instance(state='running', stop_after='2019-01-01')
+        notified = self.setup_instance(state='running', stop_after='(Nagbot: Warned on 2022-10-14)')
+        weekend = self.setup_instance(state='running', stop_after='On Weekends')
 
-        assert Instance.is_stoppable_without_warning(running_no_stop_after) is False
-        assert Instance.is_stoppable_without_warning(stopped_no_stop_after) is True
+        assert Instance.is_stoppable_without_warning(running_no_stop_after) is True
+        assert Instance.is_stoppable_without_warning(stopped_no_stop_after) is False
         assert Instance.is_stoppable_without_warning(past_date) is False
+        assert Instance.is_stoppable_without_warning(notified) is True
+        # During weekdays do not delete instance with stop after tag "On Weekend"
+        assert Instance.is_stoppable_without_warning(weekend, is_weekend=False) is False
+        # On Weekend delete instance with stop after tag "On Weekend"
+        assert Instance.is_stoppable_without_warning(weekend, is_weekend=True) is True
 
     def test_stoppable(self):
         past_date = self.setup_instance(state='running', stop_after='2019-01-01')
