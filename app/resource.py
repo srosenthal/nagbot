@@ -154,6 +154,11 @@ class Resource:
                         iops=iops,
                         throughput=throughput)
 
+    # Instance should be stopped without warning
+    @staticmethod
+    def generic_is_stoppable_without_warning(resource):
+        return resource.ec2_type == 'instance' and resource.stop_after == '' and resource.state == 'stopped'
+
     # Check if a resource is stoppable - currently, only instances should be stoppable
     @staticmethod
     def generic_is_stoppable(resource, today_date, is_weekend=TODAY_IS_WEEKEND):

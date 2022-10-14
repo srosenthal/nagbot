@@ -124,6 +124,9 @@ class Volume(Resource):
             print(f'Failure when calling delete_volumes: {str(e)}')
             return False
 
+    def is_stoppable_without_warning(self):
+        return self.generic_is_stoppable_without_warning(self)
+
     # Check if a volume is stoppable (should always be false)
     def is_stoppable(self, today_date, is_weekend=TODAY_IS_WEEKEND):
         return self.generic_is_stoppable(self, today_date, is_weekend)

@@ -33,6 +33,15 @@ class TestInstance(unittest.TestCase):
                         iops=0,
                         throughput=0)
 
+    def test_stoppable_without_warning(self):
+        running_no_stop_after = self.setup_instance(state='running')
+        stopped_no_stop_after = self.setup_instance(state='stopped')
+        past_date = self.setup_instance(state='running', stop_after='2019-01-01')
+
+        assert Instance.is_stoppable_without_warning(running_no_stop_after) is False
+        assert Instance.is_stoppable_without_warning(stopped_no_stop_after) is True
+        assert Instance.is_stoppable_without_warning(past_date) is False
+
     def test_stoppable(self):
         past_date = self.setup_instance(state='running', stop_after='2019-01-01')
         today_date = self.setup_instance(state='running', stop_after=nagbot.TODAY_YYYY_MM_DD)
