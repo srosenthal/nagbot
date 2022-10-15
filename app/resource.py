@@ -154,15 +154,14 @@ class Resource:
                         iops=iops,
                         throughput=throughput)
 
-    # Instance should be stopped without warning
+    # Instance with no "stop after" date should be stopped without warning
     @staticmethod
     def generic_is_stoppable_without_warning(resource, is_weekend=TODAY_IS_WEEKEND):
         if not resource.ec2_type == 'instance':
             return False
         parsed_date: parsing.ParsedDate = parsing.parse_date_tag(resource.stop_after)
-        return resource.state == 'running' and \
-            (parsed_date.expiry_date is None and not parsed_date.on_weekends) or \
-            (parsed_date.expiry_date is None and parsed_date.on_weekends and is_weekend)
+        return resource.state == 'running' and parsed_date.expiry_date is None and \
+            ((not parsed_date.on_weekends) or (parsed_date.on_weekends and is_weekend))
 
     # Check if a resource is stoppable - currently, only instances should be stoppable
     @staticmethod
