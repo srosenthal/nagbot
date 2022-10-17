@@ -109,9 +109,10 @@ class Nagbot(object):
             resources_to_terminate = list(r for r in resources if r.is_terminatable(TODAY_YYYY_MM_DD) and
                                           r.is_safe_to_terminate(TODAY_YYYY_MM_DD))
 
-            # Only stop resources which still meet the criteria for stopping, AND were warned recently
-            resources_to_stop = list(r for r in resources if r.is_stoppable(today_date=TODAY_YYYY_MM_DD)
-                                     and r.is_safe_to_stop(today_date=TODAY_YYYY_MM_DD))
+            # Only stop resources which still meet the criteria for stopping
+            resources_to_stop = list(r for r in resources if (r.is_stoppable_without_warning()) or
+                                     (r.is_stoppable(today_date=TODAY_YYYY_MM_DD)
+                                      and r.is_safe_to_stop(today_date=TODAY_YYYY_MM_DD)))
 
             if len(resources_to_terminate) > 0:
                 message = f'I terminated the following {ec2_type}s: '
