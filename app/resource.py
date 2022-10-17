@@ -74,6 +74,13 @@ def estimate_monthly_ebs_storage_price(region_name: str, instance_id: str, volum
         return size * 0.1
 
 
+# Estimated monthly costs were formulated by taking the average monthly costs of N. California and Oregon
+def estimate_monthly_snapshot_price(type: str, size: float) -> float:
+    standard_monthly_cost = .0525
+    archive_monthly_cost = .0131
+    return standard_monthly_cost*size if type == "standard" else archive_monthly_cost*size
+
+
 # Stop an EC2 resource - currently, only instances should be able to be stopped
 def stop_resource(region_name: str, instance_id: str, dryrun: bool) -> bool:
     print(f'Stopping instance: {str(instance_id)}...')
@@ -198,11 +205,11 @@ class Resource:
     def make_generic_resource_summary(resource, resource_type):
         resource_id = resource.resource_id
         resource_url = resource_type.url_from_id(resource.region_name, resource_id)
-        link = '<{}|{}>'.format(resource_url, resource.name)
+        link = f'<{resource_url}|{resource.name}>'
         return link
 
     # Create resource url
     @staticmethod
     def generic_url_from_id(region_name, resource_id, resource_type):
-        return 'https://{}.console.aws.amazon.com/ec2/v2/home?region={}#{}:search={}'.format(region_name, region_name,
-                                                                                             resource_type, resource_id)
+        return f'https://{region_name}.console.aws.amazon.com/ec2/v2/home?region={region_name}#{resource_type}:' \
+               f'search={resource_id}'

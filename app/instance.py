@@ -24,7 +24,7 @@ class Instance(Resource):
     # Return the type and state of the EC2 resource being examined ('instance' and 'running')
     @staticmethod
     def to_string():
-        return 'instance', 'running'
+        return 'instance', 'running'  # TODO: why do we assume this is running?
 
     @staticmethod
     def to_header() -> [str]:
@@ -158,10 +158,10 @@ class Instance(Resource):
         resource_type = Instance
         link = self.make_generic_resource_summary(self, resource_type)
         if self.reason:
-            state = 'State=({}, "{}")'.format(self.state, self.reason)
+            state = f'State=({self.state}, "{self.reason}")'
         else:
-            state = 'State={}'.format(self.state)
-        line = '{}, {}, Type={}'.format(link, state, self.resource_type)
+            state = f'State={self.state}'
+        line = f'{link}, {state}, Type={self.resource_type}'
         return line
 
     # Create instance url

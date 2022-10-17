@@ -146,8 +146,8 @@ class Volume(Resource):
     def make_resource_summary(self):
         resource_type = Volume
         link = self.make_generic_resource_summary(self, resource_type)
-        state = 'State={}'.format(self.state)
-        line = '{}, {}, Type={}'.format(link, state, self.resource_type)
+        state = f'State={self.state}'
+        line = f'{link}, {state}, Type={resource_type}'
         return line
 
     # Create volume url
