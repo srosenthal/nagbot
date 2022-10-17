@@ -135,6 +135,9 @@ class Instance(Resource):
             print(f'Failure when calling terminate_instances: {str(e)}')
             return False
 
+    def is_stoppable_without_warning(self,is_weekend=TODAY_IS_WEEKEND):
+        return self.generic_is_stoppable_without_warning(self, is_weekend)
+
     # Check if an instance is stoppable
     def is_stoppable(self, today_date, is_weekend=TODAY_IS_WEEKEND):
         return self.generic_is_stoppable(self, today_date, is_weekend)

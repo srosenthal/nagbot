@@ -32,6 +32,13 @@ class TestVolume(unittest.TestCase):
                       iops=1,
                       throughput=125)
 
+    def test_stoppable_without_warning(self):
+        running_no_stop_after = self.setup_volume(state='running')
+        stopped_no_stop_after = self.setup_volume(state='stopped')
+
+        assert Volume.is_stoppable_without_warning(running_no_stop_after) is False
+        assert Volume.is_stoppable_without_warning(stopped_no_stop_after) is False
+
     def test_stoppable(self):
         todays_date = nagbot.TODAY_YYYY_MM_DD
         past_date = self.setup_volume(state='available', terminate_after='2019-01-01')
