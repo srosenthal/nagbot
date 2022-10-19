@@ -80,6 +80,21 @@ def estimate_monthly_snapshot_price(type: str, size: float) -> float:
     archive_monthly_cost = .0131
     return standard_monthly_cost*size if type == "standard" else archive_monthly_cost*size
 
+def estimate_monthly_ami_price(type: str, block_device_mappings: list, ami: str) -> float:
+    total_cost = 0
+    # Logic is only implemented for ebs-backed AMIs since to date we do not use instance-backed AMIs at Seeq
+    if type == 'ebs':
+        for device in block_device_mappings:
+            # TODO: do not use try / catch and implement logic for instance-store backed AMIs
+            try:
+                snapshot = device["Ebs"]
+            except:
+                print(ami)
+            snapshot_type = snapshot["VolumeType"]
+            snapshot_size = snapshot["VolumeSize"]
+            total_cost += estimate_monthly_snapshot_price(snapshot_type, snapshot_size)
+    return total_cost
+
 
 # Stop an EC2 resource - currently, only instances should be able to be stopped
 def stop_resource(region_name: str, instance_id: str, dryrun: bool) -> bool:

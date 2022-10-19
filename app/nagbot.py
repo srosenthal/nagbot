@@ -23,7 +23,8 @@ from .snapshot import Snapshot
 TODAY = datetime.today()
 TODAY_YYYY_MM_DD = TODAY.strftime('%Y-%m-%d')
 
-RESOURCE_TYPES = [Instance, Volume, Snapshot]
+# RESOURCE_TYPES = [Instance, Volume, Snapshot]
+RESOURCE_TYPES = [Ami]
 
 """
 PREREQUISITES:
@@ -60,9 +61,6 @@ class Nagbot(object):
             resources_to_terminate = (list(r for r in resources if r.is_terminatable(TODAY_YYYY_MM_DD)))
             resources_to_stop = list(r for r in resources if r.is_stoppable(today_date=TODAY_YYYY_MM_DD))
 
-            # TODO: Snapshots, EBS volumes, and AMIs cannot be stopped, so _stopped_ should only apply to EC2
-            #  instances. Correct the output in aws channel for volumes to use correct terminology. Also clean up
-            #  the output so it looks neater.
             if len(resources_to_terminate) > 0:
                 summary_msg += f'The following {len(resources_to_terminate)} {ec2_type}s are due to be *TERMINATED*, ' \
                                'based on the "Terminate after" tag:\n'
