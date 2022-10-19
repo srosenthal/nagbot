@@ -31,11 +31,11 @@ class TestAmi(unittest.TestCase):
                    )
 
     def test_stoppable_without_warning(self):
-        running_no_stop_after = self.setup_ami(state='running')
-        stopped_no_stop_after = self.setup_ami(state='stopped')
+        available_no_stop_after = self.setup_ami(state='available')
+        pending_no_stop_after = self.setup_ami(state='pending')
 
-        assert Ami.is_stoppable_without_warning(running_no_stop_after) is False
-        assert Ami.is_stoppable_without_warning(stopped_no_stop_after) is False
+        assert Ami.is_stoppable_without_warning(available_no_stop_after) is False
+        assert Ami.is_stoppable_without_warning(pending_no_stop_after) is False
 
     def test_stoppable(self):
         todays_date = nagbot.TODAY_YYYY_MM_DD
