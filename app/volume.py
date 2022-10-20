@@ -10,7 +10,6 @@ TODAY = datetime.today()
 TODAY_IS_WEEKEND = TODAY.weekday() >= 4  # Days are 0-6. 4=Friday, 5=Saturday, 6=Sunday, 0=Monday
 
 
-# Class representing an EBS volume
 @dataclass
 class Volume(Resource):
     state: str

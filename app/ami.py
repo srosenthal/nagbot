@@ -1,31 +1,21 @@
-# TODO make imports look like other files
-# from dataclasses import dataclass
-#
-# import resource
-# from resource import Resource
-# import boto3
-#
-# from datetime import datetime
 from dataclasses import dataclass
 
 from app import resource
 from .resource import Resource
 import boto3
-from .pricing import PricingData
 
 from datetime import datetime
 TODAY = datetime.today()
 TODAY_IS_WEEKEND = TODAY.weekday() >= 4  # Days are 0-6. 4=Friday, 5=Saturday, 6=Sunday, 0=Monday
 
 
-# Class representing an AMI
 @dataclass
 class Ami(Resource):
     state: str
     ec2_type: str
     monthly_price: float
 
-    # Return the type and state of the EC2 resource being examined ('ami' and 'available')
+    # Return the type and state of the AMI
     @staticmethod
     def to_string():
         return 'ami', 'available'
@@ -39,7 +29,7 @@ class Ami(Resource):
                 'Contact',
                 'Monthly Price',
                 'Region Name',
-                'Volume Type',
+                'AMI Type',
                 'OS'
                 'IOPS',
                 'Throughput']
@@ -74,7 +64,7 @@ class Ami(Resource):
                 amis.append(ami)
         return amis
 
-    # Get the info about a single EBS volume
+    # Get the info about a single AMI
     @staticmethod
     def build_model(region_name: str, resource_dict: dict):
         tags = resource.make_tags_dict(resource_dict.get('Tags', []))
@@ -114,16 +104,16 @@ class Ami(Resource):
 
     # Delete/terminate an AMI
     def terminate_resource(self, dryrun: bool) -> bool:
-        print(f'Deleting volume: {str(self.resource_id)}...')
+        print(f'Deleting AMI: {str(self.resource_id)}...')
         ec2 = boto3.resource('ec2', region_name=self.region_name)
         image = ec2.Image(self.resource_id)
         try:
             if not dryrun:
                 response = image.deregister()  # response should return None
-                print(f'Response from delete_volumes: {str(response)}')
+                print(f'Response from image.deregister() (should be None): {str(response)}')
             return True
         except Exception as e:
-            print(f'Failure when calling delete_volumes: {str(e)}')
+            print(f'Failure when calling image.deregister(): {str(e)}')
             return False
 
     def is_stoppable_without_warning(self):
