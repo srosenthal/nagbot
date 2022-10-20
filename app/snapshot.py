@@ -108,7 +108,6 @@ class Snapshot(Resource):
                    iops=snapshot.iops,
                    throughput=snapshot.throughput)
 
-    # TODO: make a test volume and verify this works by calling this function on that specific resource
     # Delete/terminate an EBS volume
     def terminate_resource(self, dryrun: bool) -> bool:
         print(f'Deleting snapshot: {str(self.resource_id)}...')
@@ -133,8 +132,6 @@ class Snapshot(Resource):
     # Check if a snapshot is deletable/terminatable
     def is_terminatable(self, today_date):
         state = 'completed'
-        # TODO: question - since snapshot state is always completed pretty much, are they all
-        #   considered terminatable?
         return self.generic_is_terminatable(self, state, today_date)
 
     # Check if a volume is safe to stop (should always be false)

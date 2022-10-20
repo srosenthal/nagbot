@@ -82,17 +82,17 @@ def estimate_monthly_snapshot_price(type: str, size: float) -> float:
 
 def estimate_monthly_ami_price(type: str, block_device_mappings: list, ami: str) -> float:
     total_cost = 0
-    # Logic is only implemented for ebs-backed AMIs since to date we do not use instance-backed AMIs at Seeq
+    # Logic is only implemented for ebs-backed AMIs since Seeq does not use instance-backed AMIs
     if type == 'ebs':
         for device in block_device_mappings:
-            # TODO: do not use try / catch and implement logic for instance-store backed AMIs
-            try:
+            # Some AMIs contain block devices which are ephemeral volumes -this is indicative of an instance-backed AMI,
+            # but we do not contain any s3 with bundles for AMIs, so these ephemeral volumes should only cost money
+            # when an instance is fired up from the AMI, therefore this cost is not included in the sum total.
+            if "Ebs" in device.keys():
                 snapshot = device["Ebs"]
-            except:
-                print(ami)
-            snapshot_type = snapshot["VolumeType"]
-            snapshot_size = snapshot["VolumeSize"]
-            total_cost += estimate_monthly_snapshot_price(snapshot_type, snapshot_size)
+                snapshot_type = snapshot["VolumeType"]
+                snapshot_size = snapshot["VolumeSize"]
+                total_cost += estimate_monthly_snapshot_price(snapshot_type, snapshot_size)
     return total_cost
 
 

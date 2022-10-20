@@ -2,10 +2,6 @@ __author__ = "Stephen Rosenthal"
 __version__ = "1.10.1"
 __license__ = "MIT"
 
-# TODO: What defines a "stopped" snapshot, ami, and volume?
-# TODO: include how to test changes in development in the README, put SLACK_BOT_TOKEN on Keeper
-# TODO: create a NagBot Confluence page
-
 import argparse
 import re
 import sys
@@ -46,7 +42,6 @@ class Nagbot(object):
         for resource_type in RESOURCE_TYPES:
             ec2_type, ec2_state = resource_type.to_string()
             resources = resource_type.list_resources()
-            # TODO: what makes a snapshot or ami considered a running resource? include that here.
             num_running_resources = sum(1 for r in resources if r.state in ['running', 'available', 'completed'])
             num_total_resources = len(resources)
 
@@ -74,7 +69,6 @@ class Nagbot(object):
             else:
                 summary_msg += f'No {ec2_type}s are due to be terminated at this time.\n'
 
-            # TODO: the following applies only to instances and should only be ran in that case
             if ec2_type == "instance":
                 if len(resources_to_stop) > 0:
                     summary_msg += f'The following {len(resources_to_stop)} _{ec2_state}_ {ec2_type}s ' \
