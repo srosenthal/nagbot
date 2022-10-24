@@ -73,7 +73,7 @@ class Snapshot(Resource):
         tags = resource.make_tags_dict(resource_dict.get('Tags', []))
         state = resource_dict['State']
         ec2_type = 'snapshot'
-        size = resource_dict['SnapshotSize']
+        size = resource_dict['VolumeSize']
         snapshot_type = resource_dict['StorageTier']
         resource_id_tag = 'SnapshotId'
         resource_type_tag = 'StorageTier'
