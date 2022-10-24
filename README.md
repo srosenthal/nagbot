@@ -25,6 +25,13 @@ Here's what a Nagbot notification looks like in Slack:
 
 Here is a [recording of the process to setup a Slack app](https://seeq.zoom.us/rec/share/qgmqAvz_2eV3SYiNJO4mLrQlH94eGXSs89BDSl28Epl-Bjey9_DgvBLnkF3W2dOf.Zd12Sq-G5QbsOPrt) (Passcode: z?mJ%d08). The process frequently changes due to Slack changing the UI for applications.
 
+# Testing Nagbot changes during development
+
+The NagBotTest app has been registered to slack, and it is set up to send NagBot output to slack. The default 
+testing channel for NagBot is #bot-testing. 
+
+The SLACK_BOT_TOKEN for NagBotTest is found on Keeper [here](https://keepersecurity.com/vault/#detail/AUj3FYXz44uON4CVQSTKMQ).
+
 # Releasing New Versions
 
 Update the version at the top of nagbot.py to vX.Y.Z, commit, and push your changes
