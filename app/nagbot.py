@@ -19,8 +19,7 @@ from .snapshot import Snapshot
 TODAY = datetime.today()
 TODAY_YYYY_MM_DD = TODAY.strftime('%Y-%m-%d')
 
-# RESOURCE_TYPES = [Instance, Volume, Snapshot]
-RESOURCE_TYPES = [Ami]
+RESOURCE_TYPES = [Instance, Volume, Snapshot, Ami]
 
 """
 PREREQUISITES:

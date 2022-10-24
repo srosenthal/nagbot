@@ -80,7 +80,6 @@ class Ami(Resource):
         block_device_mappings = resource_dict['BlockDeviceMappings']  # the collection of ebs snapshots forming the ami
 
         monthly_price = resource.estimate_monthly_ami_price(ami_type, block_device_mappings, name)
-        print(monthly_price)
 
         return Ami(region_name=region_name,
                       resource_id=ami.resource_id,

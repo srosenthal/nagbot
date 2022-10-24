@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from unittest.mock import MagicMock
 
 from app import resource
 from app import nagbot
@@ -124,12 +125,16 @@ class TestSnapshot(unittest.TestCase):
     @patch('app.snapshot.boto3.client')
     def test_delete_snapshot(mock_client):
         mock_snapshot = TestSnapshot.setup_snapshot(state='completed')
+
         mock_ec2 = mock_client.return_value
+        # _aws is included in variable name to differentiate between Snapshot class of NagBot and Snapshot class of AWS
+        mock_snapshot_aws = MagicMock()
+        mock_ec2.Snapshot.return_value = mock_snapshot_aws
 
         assert mock_snapshot.terminate_resource(dryrun=False)
 
         mock_client.assert_called_once_with('ec2', region_name=mock_snapshot.region_name)
-        mock_ec2.delete_snapshot.assert_called_once_with(SnapshotId=mock_snapshot.resource_id)
+        mock_snapshot_aws.delete.assert_called_once()
 
     @staticmethod
     @patch('app.snapshot.boto3.client')
@@ -138,13 +143,16 @@ class TestSnapshot(unittest.TestCase):
             raise RuntimeError('An error occurred (OperationNotPermitted)...')
 
         mock_snapshot = TestSnapshot.setup_snapshot(state='completed')
+
         mock_ec2 = mock_client.return_value
-        mock_ec2.delete_snapshot.side_effect = lambda *args, **kw: raise_error()
+        mock_snapshot_aws = MagicMock()
+        mock_ec2.Snapshot.return_value = mock_snapshot_aws
+        mock_snapshot_aws.delete.side_effect = lambda *args, **kw: raise_error()
 
         assert not mock_snapshot.terminate_resource(dryrun=False)
 
         mock_client.assert_called_once_with('ec2', region_name=mock_snapshot.region_name)
-        mock_ec2.delete_snapshot.assert_called_once_with(SnapshotId=mock_snapshot.resource_id)
+        mock_snapshot_aws.delete.assert_called_once()
 
 
 if __name__ == '__main__':

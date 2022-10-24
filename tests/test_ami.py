@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from unittest.mock import MagicMock
 
 from app import resource
 from app import nagbot
@@ -121,30 +122,35 @@ class TestAmi(unittest.TestCase):
         assert Ami.is_safe_to_terminate(past_date_warned_days_ago, todays_date) is True
 
     @staticmethod
-    @patch('app.ami.boto3.client')
-    def test_delete_ami(mock_client):
+    @patch('app.ami.boto3.resource')
+    def test_delete_snapshot(mock_resource):
         mock_ami = TestAmi.setup_ami(state='available')
-        mock_ec2 = mock_client.return_value
+
+        mock_ec2 = mock_resource.return_value
+        mock_image = MagicMock()
+        mock_ec2.Image.return_value = mock_image
 
         assert mock_ami.terminate_resource(dryrun=False)
 
-        mock_client.assert_called_once_with('ec2', region_name=mock_ami.region_name)
-        mock_ec2.delete_ami.assert_called_once_with(AmiId=mock_ami.resource_id)
+        mock_resource.assert_called_once_with('ec2', region_name=mock_ami.region_name)
+        mock_image.deregister.assert_called_once()
 
     @staticmethod
-    @patch('app.ami.boto3.client')
-    def test_delete_ami_exception(mock_client):
+    @patch('app.snapshot.boto3.resource')
+    def test_delete_snapshot_exception(mock_resource):
         def raise_error():
             raise RuntimeError('An error occurred (OperationNotPermitted)...')
 
         mock_ami = TestAmi.setup_ami(state='available')
-        mock_ec2 = mock_client.return_value
-        mock_ec2.delete_ami.side_effect = lambda *args, **kw: raise_error()
+        mock_ec2 = mock_resource.return_value
+        mock_image = MagicMock()
+        mock_ec2.Image.return_value = mock_image
+        mock_image.deregister.side_effect = lambda *args, **kw: raise_error()
 
         assert not mock_ami.terminate_resource(dryrun=False)
 
-        mock_client.assert_called_once_with('ec2', region_name=mock_ami.region_name)
-        mock_ec2.delete_ami.assert_called_once_with(AmiId=mock_ami.resource_id)
+        mock_resource.assert_called_once_with('ec2', region_name=mock_ami.region_name)
+        mock_image.deregister.assert_called_once()
 
 
 if __name__ == '__main__':
