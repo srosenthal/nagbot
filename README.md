@@ -30,7 +30,10 @@ Here is a [recording of the process to setup a Slack app](https://seeq.zoom.us/r
 The NagBotTest app has been registered to slack, and it is set up to send NagBot output to slack. The default 
 testing channel for NagBot is #bot-testing. 
 
-The SLACK_BOT_TOKEN for NagBotTest is found on Keeper [here](https://keepersecurity.com/vault/#detail/AUj3FYXz44uON4CVQSTKMQ).
+For Seeq employees looking to test changes to NagBot during development, the SLACK_BOT_TOKEN for NagBotTest is found on 
+Keeper [here]
+(https://keepersecurity.
+com/vault/#detail/AUj3FYXz44uON4CVQSTKMQ).
 
 # Releasing New Versions
 
