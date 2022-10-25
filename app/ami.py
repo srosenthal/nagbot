@@ -14,6 +14,7 @@ class Ami(Resource):
     state: str
     ec2_type: str
     monthly_price: float
+    volume_type: str
 
     # Return the type and state of the AMI
     @staticmethod
@@ -32,6 +33,7 @@ class Ami(Resource):
                 'AMI Type',
                 'OS'
                 'IOPS',
+                'VolumeType'
                 'Throughput']
 
     def to_list(self) -> [str]:
@@ -45,6 +47,7 @@ class Ami(Resource):
                 self.resource_type,
                 self.operating_system,
                 self.iops,
+                self.volume_type,
                 self.throughput]
 
     # Get a list of model classes representing important properties of AMIs
@@ -77,7 +80,10 @@ class Ami(Resource):
         name = resource_dict[resource_id_tag]
         ami = Resource.build_generic_model(tags, resource_dict, region_name, resource_id_tag, resource_type_tag)
         ami_type = resource_dict['RootDeviceType']  # either instance-store or ebs
+
         block_device_mappings = resource_dict['BlockDeviceMappings']  # the collection of ebs snapshots forming the ami
+
+        iops, volume_type = get_ami_iops_and_volume_type(block_device_mappings)
 
         monthly_price = resource.estimate_monthly_ami_price(ami_type, block_device_mappings, name)
 
@@ -98,7 +104,8 @@ class Ami(Resource):
                       stop_after_tag_name=ami.stop_after_tag_name,
                       terminate_after_tag_name=ami.terminate_after_tag_name,
                       nagbot_state_tag_name=ami.nagbot_state_tag_name,
-                      iops=ami.iops,
+                      iops=iops,
+                      volume_type=volume_type,
                       throughput=ami.throughput)
 
     # Delete/terminate an AMI
@@ -156,3 +163,16 @@ class Ami(Resource):
             return True
         else:
             return False
+
+
+# Not every ami includes iops or volume type (gp2, gp3, standard) so the dictionary is inspected to see if the
+# information is available, if it is, that information is returned as a tuple.
+def get_ami_iops_and_volume_type(block_device_mappings):
+    iops = None
+    volume_type = None
+    if "Ebs" in block_device_mappings[0].keys():
+        if "Iops" in block_device_mappings[0]["Ebs"].keys():
+            iops = block_device_mappings[0]['Ebs']['Iops']
+        volume_type = block_device_mappings[0]['Ebs']['VolumeType']
+
+    return iops, volume_type
