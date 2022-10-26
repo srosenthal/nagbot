@@ -55,52 +55,6 @@ def get_tag_names(tags: dict) -> tuple:
     return stop_after_tag_name, terminate_after_tag_name, nagbot_state_tag_name
 
 
-# Estimate the monthly cost of an EBS storage volume; pricing estimations based on region us-east-1
-def estimate_monthly_ebs_storage_price(region_name: str, instance_id: str, volume_type: str, size: float, iops: float,
-                                       throughput: float) -> float:
-    if instance_id.startswith('i'):
-        ec2_resource = boto3.resource('ec2', region_name=region_name)
-        total_gb = sum([v.size for v in ec2_resource.Instance(instance_id).volumes.all()])
-        return total_gb * 0.1  # Assume EBS costs $0.1/GB/month when calculating for attached volumes
-
-    if 'gp3' in volume_type:  # gp3 type storage depends on storage, IOPS, and throughput
-        cost = size * 0.08
-        if iops > 3000:
-            provisioned_iops = iops - 3000
-            cost = cost + (provisioned_iops * 0.005)
-        if throughput > 125:
-            provisioned_throughput = throughput - 125
-            cost = cost + (provisioned_throughput * 0.04)
-        return cost
-    else:  # Assume EBS costs $0.1/GB/month, true as of Dec 2021 for gp2 type storage
-        return size * 0.1
-
-
-# Estimated monthly costs were formulated by taking the average monthly costs of N. California and Oregon
-def estimate_monthly_snapshot_price(type: str, size: float) -> float:
-    standard_monthly_cost = .0525
-    archive_monthly_cost = .0131
-    return standard_monthly_cost*size if type == "standard" else archive_monthly_cost*size
-
-def estimate_monthly_ami_price(ami_type: str, block_device_mappings: list, ami_name: str) -> float:
-    total_cost = 0
-    # Logic is only implemented for ebs-backed AMIs since Seeq does not use instance-backed AMIs
-    if ami_type == 'ebs':
-        for device in block_device_mappings:
-            # Some AMIs contain block devices which are ephemeral volumes -this is indicative of an instance-backed AMI,
-            # but we do not contain any s3 with bundles for AMIs, so these ephemeral volumes should only cost money
-            # when an instance is fired up from the AMI, therefore this cost is not included in the sum total.
-            if "Ebs" in device.keys():
-                snapshot = device["Ebs"]
-                snapshot_type = snapshot["VolumeType"]
-                snapshot_size = snapshot["VolumeSize"]
-                total_cost += estimate_monthly_snapshot_price(snapshot_type, snapshot_size)
-    else:
-        print(f"WARNING: {ami_name} is a {ami_type} type AMI with the following block_device_mappings: "
-              "{block_device_mappings}")
-    return total_cost
-
-
 # Stop an EC2 resource - currently, only instances should be able to be stopped
 def stop_resource(region_name: str, instance_id: str, dryrun: bool) -> bool:
     print(f'Stopping instance: {str(instance_id)}...')

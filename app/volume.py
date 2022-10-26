@@ -82,9 +82,9 @@ class Volume(Resource):
         resource_type_tag = 'VolumeType'
         volume = Resource.build_generic_model(tags, resource_dict, region_name, resource_id_tag, resource_type_tag)
 
-        monthly_price = resource.estimate_monthly_ebs_storage_price(region_name, volume.resource_id,
-                                                                    volume.resource_type, size, volume.iops,
-                                                                    volume.throughput)
+        monthly_price = estimate_monthly_ebs_storage_price(region_name, volume.resource_id,
+                                                           volume.resource_type, size, volume.iops,
+                                                           volume.throughput)
         monthly_server_price, monthly_storage_price = 0, 0
 
         return Volume(region_name=region_name,
@@ -168,3 +168,24 @@ class Volume(Resource):
             return True
         else:
             return False
+
+
+# Estimate the monthly cost of an EBS storage volume; pricing estimations based on region us-east-1
+def estimate_monthly_ebs_storage_price(region_name: str, instance_id: str, volume_type: str, size: float, iops: float,
+                                       throughput: float) -> float:
+    if instance_id.startswith('i'):
+        ec2_resource = boto3.resource('ec2', region_name=region_name)
+        total_gb = sum([v.size for v in ec2_resource.Instance(instance_id).volumes.all()])
+        return total_gb * 0.1  # Assume EBS costs $0.1/GB/month when calculating for attached volumes
+
+    if 'gp3' in volume_type:  # gp3 type storage depends on storage, IOPS, and throughput
+        cost = size * 0.08
+        if iops > 3000:
+            provisioned_iops = iops - 3000
+            cost = cost + (provisioned_iops * 0.005)
+        if throughput > 125:
+            provisioned_throughput = throughput - 125
+            cost = cost + (provisioned_throughput * 0.04)
+        return cost
+    else:  # Assume EBS costs $0.1/GB/month, true as of Dec 2021 for gp2 type storage
+        return size * 0.1

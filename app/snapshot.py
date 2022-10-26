@@ -90,7 +90,7 @@ class Snapshot(Resource):
         elif "Copied for DestinationAmi" in resource_dict['Description']:
             is_ami_snapshot = True
 
-        monthly_price = resource.estimate_monthly_snapshot_price(snapshot_type, size)
+        monthly_price = estimate_monthly_snapshot_price(snapshot_type, size)
 
         snapshot = Resource.build_generic_model(tags, resource_dict, region_name, resource_id_tag, resource_type_tag)
 
@@ -177,3 +177,10 @@ class Snapshot(Resource):
             return True
         else:
             return False
+
+
+# Estimated monthly costs were formulated by taking the average monthly costs of N. California and Oregon
+def estimate_monthly_snapshot_price(type: str, size: float) -> float:
+    standard_monthly_cost = .0525
+    archive_monthly_cost = .0131
+    return standard_monthly_cost*size if type == "standard" else archive_monthly_cost*size

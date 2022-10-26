@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from app import resource
 from .resource import Resource
+from .volume import estimate_monthly_ebs_storage_price
 import boto3
 from .pricing import PricingData
 
@@ -92,8 +93,8 @@ class Instance(Resource):
         pricing = PricingData()
         monthly_server_price = pricing.lookup_monthly_price(region_name, instance.resource_type,
                                                             instance.operating_system)
-        monthly_storage_price = resource.estimate_monthly_ebs_storage_price(region_name,
-                                                                            instance.resource_id, 'none', 0, 0, 0)
+        monthly_storage_price = estimate_monthly_ebs_storage_price(region_name,
+                                                                   instance.resource_id, 'none', 0, 0, 0)
         monthly_price = (monthly_server_price + monthly_storage_price) if state == 'running' else monthly_storage_price
 
         size = 0

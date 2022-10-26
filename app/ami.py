@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from app import resource
 from .resource import Resource
+from .snapshot import estimate_monthly_snapshot_price
 import boto3
 
 from datetime import datetime
@@ -85,7 +86,7 @@ class Ami(Resource):
 
         iops, volume_type = get_ami_iops_and_volume_type(block_device_mappings)
 
-        monthly_price = resource.estimate_monthly_ami_price(ami_type, block_device_mappings, name)
+        monthly_price = estimate_monthly_ami_price(ami_type, block_device_mappings, name)
 
         return Ami(region_name=region_name,
                       resource_id=ami.resource_id,
@@ -180,3 +181,22 @@ def get_ami_iops_and_volume_type(block_device_mappings):
         volume_type = block_device_mappings[0]['Ebs']['VolumeType']
 
     return iops, volume_type
+
+
+def estimate_monthly_ami_price(ami_type: str, block_device_mappings: list, ami_name: str) -> float:
+    total_cost = 0
+    # Logic is only implemented for ebs-backed AMIs since Seeq does not use instance-backed AMIs
+    if ami_type == 'ebs':
+        for device in block_device_mappings:
+            # Some AMIs contain block devices which are ephemeral volumes -this is indicative of an instance-backed AMI,
+            # but we do not contain any s3 with bundles for AMIs, so these ephemeral volumes should only cost money
+            # when an instance is fired up from the AMI, therefore this cost is not included in the sum total.
+            if "Ebs" in device.keys():
+                snapshot = device["Ebs"]
+                snapshot_type = snapshot["VolumeType"]
+                snapshot_size = snapshot["VolumeSize"]
+                total_cost += estimate_monthly_snapshot_price(snapshot_type, snapshot_size)
+    else:
+        print(f"WARNING: {ami_name} is a {ami_type} type AMI with the following block_device_mappings: "
+              "{block_device_mappings}")
+    return total_cost
