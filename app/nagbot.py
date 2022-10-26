@@ -87,7 +87,7 @@ class Nagbot(object):
         try:
             self.notify_internal(channel, dryrun)
         except Exception as e:
-            sqslack.send_message(channel, f"Nagbot failed to run the 'notify' command: {str(e)}")
+            sqslack.send_message(channel, f"Nagbot failed to run the 'notify' command: {e}")
             raise e
 
     @staticmethod
