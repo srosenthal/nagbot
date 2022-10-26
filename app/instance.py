@@ -155,6 +155,10 @@ class Instance(Resource):
         resource_type = Instance
         return self.generic_is_safe_to_terminate(self, resource_type, today_date)
 
+    # Check if a instance is active
+    def is_active(self):
+        return True if self.state == 'running' else False
+
     # Create instance summary
     def make_resource_summary(self):
         resource_type = Instance

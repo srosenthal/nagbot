@@ -143,6 +143,10 @@ class Ami(Resource):
         resource_type = Ami
         return self.generic_is_safe_to_terminate(self, resource_type, today_date)
 
+    # Check if a instance is active
+    def is_active(self):
+        return True if self.state == 'available' else False
+
     # Create ami summary
     def make_resource_summary(self):
         resource_type = Ami

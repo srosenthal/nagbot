@@ -153,6 +153,10 @@ class Snapshot(Resource):
         resource_type = Snapshot
         return self.generic_is_safe_to_terminate(self, resource_type, today_date)
 
+    # Check if a snapshot is active
+    def is_active(self):
+        return True if self.state == 'completed' else False
+
     # Create snapshot summary
     def make_resource_summary(self):
         resource_type = Snapshot
