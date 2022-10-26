@@ -28,6 +28,7 @@ class TestAmi(unittest.TestCase):
                    terminate_after_tag_name=terminate_after_tag_name,
                    nagbot_state_tag_name='',
                    iops=1,
+                   volume_type='gp3',
                    throughput=125
                    )
 

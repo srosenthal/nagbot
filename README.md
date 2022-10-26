@@ -35,7 +35,7 @@ Keeper [here]
 (https://keepersecurity.
 com/vault/#detail/AUj3FYXz44uON4CVQSTKMQ).
 
-# Releasing New Versions
+# Releasing New Versions (Seeq Employees)
 
 Update the version at the top of nagbot.py to vX.Y.Z, commit, and push your changes
 
@@ -57,8 +57,12 @@ Promote to `prod` using:
 jfrog rt docker-promote nagbot nagbot-docker-dev-local nagbot-docker-prod-local --copy=true --source-tag=vX.Y.Z
 ```
 
-Apply the newly created 'prod' image's tag to the NagBot Job in the build infra cluster by updating the devops repo at
-`devops/devops/build-infra-cluster/nagbot/jobs.yaml`, then applying the changes with 
+Next, apply the newly created 'prod' image's tag to the NagBot Job in the build infra cluster. To do this, check out 
+the [devops](https://github.com/seeq12/devops) repo, create a new branch, then update the docker tag in
+`devops/devops/build-infra-cluster/nagbot/jobs.yaml`. After connecting to the build infra cluster by following 
+instructions in [How to Access the Build Infra Cluster](https://seeq.atlassian.
+net/wiki/spaces/SQ/pages/2317386552/How+to+Access+the+Dev-Infra+Cluster), apply the changes using: 
 ```sh
 kubectl apply -f devops/devops/build-infra-cluster/nagbot/jobs.yaml
 ```
+Finally, create a PR with the updated version.
