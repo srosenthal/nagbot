@@ -139,6 +139,8 @@ class Snapshot(Resource):
 
     # Check if a snapshot is deletable/terminatable
     def is_terminatable(self, today_date):
+        if self.is_ami_snapshot or self.is_aws_backup_snapshot:
+            return False
         state = 'completed'
         return self.generic_is_terminatable(self, state, today_date)
 

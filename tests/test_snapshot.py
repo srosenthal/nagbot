@@ -93,6 +93,11 @@ class TestSnapshot(unittest.TestCase):
         future_date = self.setup_snapshot(state='completed', terminate_after='2050-01-01')
         unknown_date = self.setup_snapshot(state='completed', terminate_after='TBD')
 
+        ami_snapshot = self.setup_snapshot(state='completed', terminate_after='2019-01-01')
+        ami_snapshot.__setattr__('is_ami_snapshot', True)
+        aws_backup_snapshot = self.setup_snapshot(state='completed', terminate_after='2019-01-01')
+        aws_backup_snapshot.__setattr__('is_aws_backup_snapshot', True)
+
         # These snapshots should get a deletion warning
         assert Snapshot.is_terminatable(past_date, todays_date) is True
         assert Snapshot.is_terminatable(today_date, todays_date) is True
@@ -104,6 +109,10 @@ class TestSnapshot(unittest.TestCase):
         assert Snapshot.is_terminatable(future_date, todays_date) is False
         assert Snapshot.is_terminatable(unknown_date, todays_date) is False
         assert Snapshot.is_terminatable(anything_warned, todays_date) is False
+
+        # These snapshots should not be deleted since they are aws backup or ami snapshots
+        assert Snapshot.is_terminatable(ami_snapshot, todays_date) is False
+        assert Snapshot.is_terminatable(aws_backup_snapshot, todays_date) is False
 
         # These snapshots don't have a warning, so they shouldn't be deleted yet
         assert Snapshot.is_safe_to_terminate(past_date, todays_date) is False
