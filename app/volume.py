@@ -34,7 +34,7 @@ class Volume(Resource):
                 'Monthly Price',
                 'Region Name',
                 'Volume Type',
-                'OS'
+                'OS',
                 'Size',
                 'IOPS',
                 'Throughput']

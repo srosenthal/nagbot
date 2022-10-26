@@ -29,7 +29,9 @@ class TestSnapshot(unittest.TestCase):
                         nagbot_state_tag_name='',
                         size=1,
                         iops=1,
-                        throughput=125)
+                        throughput=125,
+                        is_ami_snapshot=False,
+                        is_aws_backup_snapshot=False)
 
     def test_stoppable_without_warning(self):
         completed_no_stop_after = self.setup_snapshot(state='completed')

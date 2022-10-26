@@ -31,7 +31,7 @@ class Ami(Resource):
                 'Monthly Price',
                 'Region Name',
                 'AMI Type',
-                'OS'
+                'OS',
                 'IOPS',
                 'VolumeType'
                 'Throughput']

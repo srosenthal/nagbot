@@ -16,6 +16,8 @@ class Snapshot(Resource):
     ec2_type: str
     monthly_price: float
     size: float
+    is_ami_snapshot: bool
+    is_aws_backup_snapshot: bool
 
     # Return the type and state of the Snapshot
     @staticmethod
@@ -32,10 +34,12 @@ class Snapshot(Resource):
                 'Monthly Price',
                 'Region Name',
                 'Snapshot Type',
-                'OS'
+                'OS',
                 'Size',
                 'IOPS',
-                'Throughput']
+                'Throughput',
+                'Is Ami Snapshot',
+                'Is AWS Backup Snapshot']
 
     def to_list(self) -> [str]:
         return [self.resource_id,
@@ -49,7 +53,9 @@ class Snapshot(Resource):
                 self.operating_system,
                 self.size,
                 self.iops,
-                self.throughput]
+                self.throughput,
+                self.is_ami_snapshot,
+                self.is_aws_backup_snapshot]
 
     # Get a list of model classes representing important properties of snapshots
     @staticmethod
@@ -77,30 +83,39 @@ class Snapshot(Resource):
         snapshot_type = resource_dict['StorageTier']
         resource_id_tag = 'SnapshotId'
         resource_type_tag = 'StorageTier'
+        is_aws_backup_snapshot = False
+        is_ami_snapshot = False
+        if "AWS Backup service" in resource_dict['Description']:
+            is_aws_backup_snapshot = True
+        elif "Copied for DestinationAmi" in resource_dict['Description']:
+            is_ami_snapshot = True
+
         monthly_price = resource.estimate_monthly_snapshot_price(snapshot_type, size)
 
         snapshot = Resource.build_generic_model(tags, resource_dict, region_name, resource_id_tag, resource_type_tag)
 
         return Snapshot(region_name=region_name,
-                   resource_id=snapshot.resource_id,
-                   state=state,
-                   reason=snapshot.reason,
-                   resource_type=snapshot.resource_type,
-                   ec2_type=ec2_type,
-                   eks_nodegroup_name=snapshot.eks_nodegroup_name,
-                   name=snapshot.name,
-                   operating_system=snapshot.operating_system,
-                   monthly_price=monthly_price,
-                   stop_after=snapshot.stop_after,
-                   terminate_after=snapshot.terminate_after,
-                   nagbot_state=snapshot.nagbot_state,
-                   contact=snapshot.contact,
-                   stop_after_tag_name=snapshot.stop_after_tag_name,
-                   terminate_after_tag_name=snapshot.terminate_after_tag_name,
-                   nagbot_state_tag_name=snapshot.nagbot_state_tag_name,
-                   size=size,
-                   iops=snapshot.iops,
-                   throughput=snapshot.throughput)
+                        resource_id=snapshot.resource_id,
+                        state=state,
+                        reason=snapshot.reason,
+                        resource_type=snapshot.resource_type,
+                        ec2_type=ec2_type,
+                        eks_nodegroup_name=snapshot.eks_nodegroup_name,
+                        name=snapshot.name,
+                        operating_system=snapshot.operating_system,
+                        monthly_price=monthly_price,
+                        stop_after=snapshot.stop_after,
+                        terminate_after=snapshot.terminate_after,
+                        nagbot_state=snapshot.nagbot_state,
+                        contact=snapshot.contact,
+                        stop_after_tag_name=snapshot.stop_after_tag_name,
+                        terminate_after_tag_name=snapshot.terminate_after_tag_name,
+                        nagbot_state_tag_name=snapshot.nagbot_state_tag_name,
+                        size=size,
+                        iops=snapshot.iops,
+                        throughput=snapshot.throughput,
+                        is_ami_snapshot=is_ami_snapshot,
+                        is_aws_backup_snapshot=is_aws_backup_snapshot)
 
     def terminate_resource(self, dryrun: bool) -> bool:
         print(f'Deleting snapshot: {str(self.resource_id)}...')
@@ -152,7 +167,7 @@ class Snapshot(Resource):
 
     # Include snapshot in monthly price calculation if available
     def included_in_monthly_price(self):
-        if self.state == 'completed':
+        if self.state == 'completed' and not self.is_ami_snapshot:
             return True
         else:
             return False
