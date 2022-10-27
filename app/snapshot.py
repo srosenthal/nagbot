@@ -155,6 +155,11 @@ class Snapshot(Resource):
     def is_active(self):
         return True if self.state == 'completed' else False
 
+    # Determine if resource can be stopped - Snapshots cannot be
+    @staticmethod
+    def can_be_stopped() -> bool:
+        return False
+
     # Create snapshot summary
     def make_resource_summary(self):
         resource_type = Snapshot

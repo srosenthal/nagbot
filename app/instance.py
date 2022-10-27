@@ -24,7 +24,7 @@ class Instance(Resource):
     # Return the type and state of the EC2 resource being examined ('instance' and 'running')
     @staticmethod
     def to_string():
-        return 'instance', 'running'  # TODO: why do we assume this is running?
+        return 'instance', 'running'
 
     @staticmethod
     def to_header() -> [str]:
@@ -159,6 +159,11 @@ class Instance(Resource):
     # Check if a instance is active
     def is_active(self):
         return True if self.state == 'running' else False
+
+    # Determine if resource can be stopped - EC2 Instances can be
+    @staticmethod
+    def can_be_stopped() -> bool:
+        return True
 
     # Create instance summary
     def make_resource_summary(self):
