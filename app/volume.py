@@ -148,7 +148,7 @@ class Volume(Resource):
     def is_active(self):
         return True if self.state == 'available' else False
 
-    # Determine if resource can be stopped - Volumes cannot be
+    # Determine if resource has a 'stopped' state - Volumes don't
     @staticmethod
     def can_be_stopped() -> bool:
         return False

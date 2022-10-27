@@ -160,7 +160,7 @@ class Instance(Resource):
     def is_active(self):
         return True if self.state == 'running' else False
 
-    # Determine if resource can be stopped - EC2 Instances can be
+    # Determine if resource has a 'stopped' state - EC2 Instances do
     @staticmethod
     def can_be_stopped() -> bool:
         return True

@@ -149,7 +149,7 @@ class Ami(Resource):
     def is_active(self):
         return self.state == 'available'
 
-    # Determine if resource can be stopped - AMIs cannot be
+    # Determine if resource has a 'stopped' state - AMIs don't
     @staticmethod
     def can_be_stopped() -> bool:
         return False
