@@ -146,7 +146,7 @@ class Ami(Resource):
 
     # Check if a instance is active
     def is_active(self):
-        return True if self.state == 'available' else False
+        return self.state == 'available'
 
     # Create ami summary
     def make_resource_summary(self):
