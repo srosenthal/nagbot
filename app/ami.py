@@ -8,6 +8,7 @@ import boto3
 from datetime import datetime
 TODAY = datetime.today()
 TODAY_IS_WEEKEND = TODAY.weekday() >= 4  # Days are 0-6. 4=Friday, 5=Saturday, 6=Sunday, 0=Monday
+ORG_AMIS = False
 
 
 @dataclass
@@ -200,3 +201,13 @@ def estimate_monthly_ami_price(ami_type: str, block_device_mappings: list, ami_n
         print(f"WARNING: {ami_name} is a {ami_type} type AMI with the following block_device_mappings: "
               f"{block_device_mappings}")
     return total_cost
+
+
+def is_ami_registered(ami_id: str, ) -> bool:
+    # Use global variable to make API call once instead of every time the method is called since call is costly
+    global ORG_AMIS
+    if not ORG_AMIS:
+        ec2_client = boto3.client('ec2')
+        ORG_AMIS = ec2_client.describe_images(Owners=['self'])
+    # Iterate through each image owned by organization to check if ami id exists, if it does it is registered
+    return True if [i['ImageId'] for i in ORG_AMIS['Images'] if i['ImageId'] == ami_id] else False

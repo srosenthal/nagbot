@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 
 from app import resource
+from app import ami
 from .resource import Resource
+
 import boto3
 
 from datetime import datetime
+import re
 
 TODAY = datetime.today()
 TODAY_IS_WEEKEND = TODAY.weekday() >= 4  # Days are 0-6. 4=Friday, 5=Saturday, 6=Sunday, 0=Monday
@@ -83,16 +86,11 @@ class Snapshot(Resource):
         snapshot_type = resource_dict['StorageTier']
         resource_id_tag = 'SnapshotId'
         resource_type_tag = 'StorageTier'
-        is_aws_backup_snapshot = False
-        is_ami_snapshot = False
-        if "AWS Backup service" in resource_dict['Description']:
-            is_aws_backup_snapshot = True
-        elif "Copied for DestinationAmi" in resource_dict['Description']:
-            is_ami_snapshot = True
 
         monthly_price = estimate_monthly_snapshot_price(snapshot_type, size)
 
         snapshot = Resource.build_generic_model(tags, resource_dict, region_name, resource_id_tag, resource_type_tag)
+        is_aws_backup_snapshot, is_ami_snapshot = is_backup_or_ami_snapshot(snapshot.resource_id, resource_dict['Description'])
 
         return Snapshot(region_name=region_name,
                         resource_id=snapshot.resource_id,
@@ -184,3 +182,20 @@ def estimate_monthly_snapshot_price(type: str, size: float) -> float:
     standard_monthly_cost = .0525
     archive_monthly_cost = .0131
     return standard_monthly_cost*size if type == "standard" else archive_monthly_cost*size
+
+
+# Checks the snapshot description to see if the snapshot is part of an AMI or AWS backup.
+# If the snapshot is part of an AMI, but the AMI has been deregistered, then this function will return False
+# for is_ami_snapshot so the remaining snapshot can be cleaned up.
+def is_backup_or_ami_snapshot(name: str, description: str) -> bool:
+    is_aws_backup_snapshot = False
+    is_ami_snapshot = False
+    if "AWS Backup service" in description:
+        is_aws_backup_snapshot = True
+    elif "Copied for DestinationAmi" in description:
+        # regex matches the first occurrence of ami, since the snapshot
+        # belongs to the first mentioned ami (destination ami) and not the second (source ami)
+        ami_id = re.search(r'ami-\S*', description).group()
+        is_ami_snapshot = ami.is_ami_registered(ami_id)
+
+    return is_aws_backup_snapshot, is_ami_snapshot
