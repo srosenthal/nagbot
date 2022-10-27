@@ -46,7 +46,7 @@ class Nagbot(object):
 
             running_monthly_cost = money_to_string(sum(r.monthly_price for r in resources
                                                        if r.included_in_monthly_price()))
-            summary_msg += f"\n*{resource_type.__name__}s*\nWe have {num_active_resources} " \
+            summary_msg += f"\n*{resource_type.__name__}s:*\nWe have {num_active_resources} " \
                            f"{ec2_state} {ec2_type}s right now and {num_total_resources} total.\n" \
                            f"If we continue to run these {ec2_type}s all month, it would cost {running_monthly_cost}.\n"
 
