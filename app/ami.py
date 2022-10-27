@@ -198,5 +198,5 @@ def estimate_monthly_ami_price(ami_type: str, block_device_mappings: list, ami_n
                 total_cost += estimate_monthly_snapshot_price(snapshot_type, snapshot_size)
     else:
         print(f"WARNING: {ami_name} is a {ami_type} type AMI with the following block_device_mappings: "
-              "{block_device_mappings}")
+              f"{block_device_mappings}")
     return total_cost
