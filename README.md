@@ -60,9 +60,8 @@ jfrog rt docker-promote nagbot nagbot-docker-dev-local nagbot-docker-prod-local 
 Next, apply the newly created 'prod' image's tag to the NagBot Job in the build infra cluster. To do this, check out 
 the [devops](https://github.com/seeq12/devops) repo, create a new branch, then update the docker tag in
 `devops/devops/build-infra-cluster/nagbot/jobs.yaml`. After connecting to the build infra cluster by following 
-instructions in [How to Access the Build Infra Cluster](https://seeq.atlassian.
-net/wiki/spaces/SQ/pages/2317386552/How+to+Access+the+Dev-Infra+Cluster), apply the changes using: 
+instructions [How to Access the Build Infra Cluster](https://seeq.atlassian.net/wiki/spaces/SQ/pages/2317386552/How+to+Access+the+Dev-Infra+Cluster), apply the updated version to the cluster using: 
 ```sh
 kubectl apply -f devops/devops/build-infra-cluster/nagbot/jobs.yaml
 ```
-Finally, create a PR with the updated version.
+Finally, create a PR with the updated jfrog version in the devops repo.
