@@ -17,7 +17,7 @@ class Ami(Resource):
     ec2_type: str
     monthly_price: float
     volume_type: str
-    snapshots: list  # list of ec2.Snapshot objects representing each Snapshot making up the AMI
+    snapshot_ids: [str]  # list of strings representing ids of each Snapshot making up the AMI
 
     # Return the type and state of the AMI
     @staticmethod
@@ -38,7 +38,7 @@ class Ami(Resource):
                 'IOPS',
                 'VolumeType'
                 'Throughput',
-                'Snapshots']
+                'Snapshot IDs']
 
     def to_list(self) -> [str]:
         return [self.resource_id,
@@ -53,7 +53,7 @@ class Ami(Resource):
                 self.iops,
                 self.volume_type,
                 self.throughput,
-                self.snapshots]
+                self.snapshot_ids]
 
     # Get a list of model classes representing important properties of AMIs
     @staticmethod
@@ -86,8 +86,9 @@ class Ami(Resource):
         ami = Resource.build_generic_model(tags, resource_dict, region_name, resource_id_tag, resource_type_tag)
         ami_type = resource_dict['RootDeviceType']  # either instance-store or ebs
 
-        block_device_mappings = resource_dict['BlockDeviceMappings']  # the collection of ebs snapshots forming the ami
-        snapshots = get_snapshots_making_up_ami(block_device_mappings, region_name)
+        block_device_mappings = resource_dict['BlockDeviceMappings']
+        # Get snapshot id of any Snapshots making up the AMI if there are any
+        snapshot_ids = [device['Ebs']['SnapshotId'] for device in block_device_mappings if "Ebs" in device.keys()]
         iops, volume_type = get_ami_iops_and_volume_type(block_device_mappings)
         monthly_price = estimate_monthly_ami_price(ami_type, block_device_mappings, name)
 
@@ -111,7 +112,7 @@ class Ami(Resource):
                       iops=iops,
                       volume_type=volume_type,
                       throughput=ami.throughput,
-                      snapshots=snapshots)
+                      snapshot_ids=snapshot_ids)
 
     # Delete/terminate an AMI
     def terminate_resource(self, dryrun: bool) -> bool:
@@ -129,10 +130,11 @@ class Ami(Resource):
         # Delete Snapshots making up the AMI once the AMI is deleted
         snapshots_deleted = True
         if not dryrun:
-            for snapshot in self.snapshots:
-                print(f"Deleting {snapshot.id} ...")
+            for snapshot_id in self.snapshot_ids:
+                snapshot = ec2.Snapshot(snapshot_id)
+                print(f"Deleting Snapshot: {snapshot_id}, that was part of AMI: {str(self.resource_id)} ...")
                 try:
-                    snapshot.delete()  # .delete() returns None
+                    snapshot.delete()  # delete() returns None
                 except Exception as e:
                     print(f'Failure when calling snapshot.delete(): {str(e)}')
                     snapshots_deleted = False  # set to False and continue attempting to delete remaining Snapshots
@@ -231,11 +233,3 @@ def is_ami_registered(ami_id: str) -> bool:
     except (botocore.exceptions.ClientError, AttributeError):
         is_registered = False
     return is_registered
-
-
-# Returns a list of aws ec2.Snapshot objects representing each Snapshot - if any - making up an EBS-backed AMI.
-def get_snapshots_making_up_ami(block_device_mappings: list, region_name: str) -> list:
-    # Get snapshot id of each Snapshot making up the AMI
-    snapshot_ids = [device['Ebs']['SnapshotId'] for device in block_device_mappings if "Ebs" in device.keys()]
-    ec2 = boto3.resource('ec2', region_name)
-    return [ec2.Snapshot(snapshot_id) for snapshot_id in snapshot_ids]

@@ -30,7 +30,7 @@ class TestAmi(unittest.TestCase):
                    iops=1,
                    volume_type='gp3',
                    throughput=125,
-                   snapshots=[]
+                   snapshot_ids=['snap-12345', 'snap-4567']
                    )
 
     def test_stoppable_without_warning(self):
@@ -130,12 +130,15 @@ class TestAmi(unittest.TestCase):
 
         mock_ec2 = mock_resource.return_value
         mock_image = MagicMock()
+        mock_snapshot = MagicMock()
         mock_ec2.Image.return_value = mock_image
+        mock_ec2.Snapshot.return_value = mock_snapshot
 
         assert mock_ami.terminate_resource(dryrun=False)
 
         mock_resource.assert_called_once_with('ec2', region_name=mock_ami.region_name)
         mock_image.deregister.assert_called_once()
+        assert mock_snapshot.delete.call_count == 2
 
     @staticmethod
     @patch('app.snapshot.boto3.resource')
@@ -146,13 +149,18 @@ class TestAmi(unittest.TestCase):
         mock_ami = TestAmi.setup_ami(state='available')
         mock_ec2 = mock_resource.return_value
         mock_image = MagicMock()
+        mock_snapshot = MagicMock()
         mock_ec2.Image.return_value = mock_image
+        mock_ec2.Snapshot.return_value = mock_snapshot
+
         mock_image.deregister.side_effect = lambda *args, **kw: raise_error()
+        mock_snapshot.delete.side_effect = lambda *args, **kw: raise_error()
 
         assert not mock_ami.terminate_resource(dryrun=False)
 
         mock_resource.assert_called_once_with('ec2', region_name=mock_ami.region_name)
         mock_image.deregister.assert_called_once()
+        assert mock_snapshot.delete.call_count == 0  # Snapshots shouldn't be deleted if AMI is not deleted
 
 
 if __name__ == '__main__':
