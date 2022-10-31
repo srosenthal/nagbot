@@ -222,7 +222,7 @@ def estimate_monthly_ami_price(ami_type: str, block_device_mappings: list, ami_n
     return total_cost
 
 
-def is_ami_registered(ami_id: str, ) -> bool:
+def is_ami_registered(ami_id: str) -> bool:
     ec2 = boto3.resource('ec2')
     is_registered = True
     # Retrieve name of AMI, if ClientError or AttributeError is thrown, the AMI does not exist
