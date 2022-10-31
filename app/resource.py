@@ -55,27 +55,6 @@ def get_tag_names(tags: dict) -> tuple:
     return stop_after_tag_name, terminate_after_tag_name, nagbot_state_tag_name
 
 
-# Estimate the monthly cost of an EBS storage volume; pricing estimations based on region us-east-1
-def estimate_monthly_ebs_storage_price(region_name: str, instance_id: str, volume_type: str, size: float, iops: float,
-                                       throughput: float) -> float:
-    if instance_id.startswith('i'):
-        ec2_resource = boto3.resource('ec2', region_name=region_name)
-        total_gb = sum([v.size for v in ec2_resource.Instance(instance_id).volumes.all()])
-        return total_gb * 0.1  # Assume EBS costs $0.1/GB/month when calculating for attached volumes
-
-    if 'gp3' in volume_type:  # gp3 type storage depends on storage, IOPS, and throughput
-        cost = size * 0.08
-        if iops > 3000:
-            provisioned_iops = iops - 3000
-            cost = cost + (provisioned_iops * 0.005)
-        if throughput > 125:
-            provisioned_throughput = throughput - 125
-            cost = cost + (provisioned_throughput * 0.04)
-        return cost
-    else:  # Assume EBS costs $0.1/GB/month, true as of Dec 2021 for gp2 type storage
-        return size * 0.1
-
-
 # Stop an EC2 resource - currently, only instances should be able to be stopped
 def stop_resource(region_name: str, instance_id: str, dryrun: bool) -> bool:
     print(f'Stopping instance: {str(instance_id)}...')
@@ -209,11 +188,11 @@ class Resource:
     def make_generic_resource_summary(resource, resource_type):
         resource_id = resource.resource_id
         resource_url = resource_type.url_from_id(resource.region_name, resource_id)
-        link = '<{}|{}>'.format(resource_url, resource.name)
+        link = f'<{resource_url}|{resource.name}>'
         return link
 
     # Create resource url
     @staticmethod
     def generic_url_from_id(region_name, resource_id, resource_type):
-        return 'https://{}.console.aws.amazon.com/ec2/v2/home?region={}#{}:search={}'.format(region_name, region_name,
-                                                                                             resource_type, resource_id)
+        return f'https://{region_name}.console.aws.amazon.com/ec2/v2/home?region={region_name}#{resource_type}:' \
+               f'search={resource_id}'

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from app import resource
 from .resource import Resource
+from .volume import estimate_monthly_ebs_storage_price
 import boto3
 from .pricing import PricingData
 
@@ -11,7 +12,6 @@ TODAY = datetime.today()
 TODAY_IS_WEEKEND = TODAY.weekday() >= 4  # Days are 0-6. 4=Friday, 5=Saturday, 6=Sunday, 0=Monday
 
 
-# Class representing an EC2 instance
 @dataclass
 class Instance(Resource):
     state: str
@@ -93,8 +93,8 @@ class Instance(Resource):
         pricing = PricingData()
         monthly_server_price = pricing.lookup_monthly_price(region_name, instance.resource_type,
                                                             instance.operating_system)
-        monthly_storage_price = resource.estimate_monthly_ebs_storage_price(region_name,
-                                                                            instance.resource_id, 'none', 0, 0, 0)
+        monthly_storage_price = estimate_monthly_ebs_storage_price(region_name,
+                                                                   instance.resource_id, 'none', 0, 0, 0)
         monthly_price = (monthly_server_price + monthly_storage_price) if state == 'running' else monthly_storage_price
 
         size = 0
@@ -156,15 +156,24 @@ class Instance(Resource):
         resource_type = Instance
         return self.generic_is_safe_to_terminate(self, resource_type, today_date)
 
+    # Check if a instance is active
+    def is_active(self):
+        return True if self.state == 'running' else False
+
+    # Determine if resource has a 'stopped' state - EC2 Instances do
+    @staticmethod
+    def can_be_stopped() -> bool:
+        return True
+
     # Create instance summary
     def make_resource_summary(self):
         resource_type = Instance
         link = self.make_generic_resource_summary(self, resource_type)
         if self.reason:
-            state = 'State=({}, "{}")'.format(self.state, self.reason)
+            state = f'State=({self.state}, "{self.reason}")'
         else:
-            state = 'State={}'.format(self.state)
-        line = '{}, {}, Type={}'.format(link, state, self.resource_type)
+            state = f'State={self.state}'
+        line = f'{link}, {state}, Type={self.resource_type}'
         return line
 
     # Create instance url
