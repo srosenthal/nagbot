@@ -121,8 +121,7 @@ class Snapshot(Resource):
         snapshot = ec2.Snapshot(self.resource_id)
         try:
             if not dryrun:
-                response = snapshot.delete()
-                print(f'Response from snapshot.delete(): {str(response)}')
+                snapshot.delete()  # delete() returns None
             return True
         except Exception as e:
             print(f'Failure when calling snapshot.delete(): {str(e)}')
