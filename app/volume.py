@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from app import resource
+from app import resource, parsing
 from .resource import Resource
 import boto3
 
@@ -123,35 +123,18 @@ class Volume(Resource):
             print(f'Failure when calling delete_volumes: {str(e)}')
             return False
 
-    def is_stoppable_without_warning(self):
-        return self.generic_is_stoppable_without_warning(self)
+   # Check if a volume is deletable/terminatable without warning
+    def can_be_terminated(self, today_date=resource.TODAY_YYYY_MM_DD):
+        parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.terminate_after)
+        return self.state == 'available' and resource.has_terminate_after_passed(parsed_date.expiry_date, today_date)
 
-    # Check if a volume is stoppable (should always be false)
-    def is_stoppable(self, today_date, is_weekend=TODAY_IS_WEEKEND):
-        return self.generic_is_stoppable(self, today_date, is_weekend)
-
-    # Check if a volume is deletable/terminatable
-    def is_terminatable(self, today_date):
-        state = 'available'
-        return self.generic_is_terminatable(self, state, today_date)
-
-    # Check if a volume is safe to stop (should always be false)
-    def is_safe_to_stop(self, today_date, is_weekend=TODAY_IS_WEEKEND):
-        return self.generic_is_safe_to_stop(self, today_date, is_weekend)
-
-    # Check if a volume is safe to delete/terminate
-    def is_safe_to_terminate(self, today_date):
-        resource_type = Volume
-        return self.generic_is_safe_to_terminate(self, resource_type, today_date)
+    # Check if a volume is safe to delete/terminate - warning period has passed
+    def is_safe_to_terminate_after_warning(self, today_date):
+        return self.state == 'available' and super().is_safe_to_terminate_after_warning(today_date)
 
     # Check if a volume is active
     def is_active(self):
         return True if self.state == 'available' else False
-
-    # Determine if resource has a 'stopped' state - Volumes don't
-    @staticmethod
-    def can_be_stopped() -> bool:
-        return False
 
     # Create volume summary
     def make_resource_summary(self):

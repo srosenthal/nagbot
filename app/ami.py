@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from app import resource
+from app import resource, parsing
 from .resource import Resource
 from .snapshot import estimate_monthly_snapshot_price
 import boto3
@@ -140,35 +140,18 @@ class Ami(Resource):
                     snapshots_deleted = False  # set to False and continue attempting to delete remaining Snapshots
         return snapshots_deleted
 
-    def is_stoppable_without_warning(self):
-        return self.generic_is_stoppable_without_warning(self)
-
-    # Check if an ami is stoppable (should always be false)
-    def is_stoppable(self, today_date, is_weekend=TODAY_IS_WEEKEND):
-        return self.generic_is_stoppable(self, today_date, is_weekend)
-
     # Check if an ami is deletable/terminatable
-    def is_terminatable(self, today_date):
-        state = 'available'
-        return self.generic_is_terminatable(self, state, today_date)
-
-    # Check if an ami is safe to stop (should always be false)
-    def is_safe_to_stop(self, today_date, is_weekend=TODAY_IS_WEEKEND):
-        return self.generic_is_safe_to_stop(self, today_date, is_weekend)
+    def can_be_terminated(self, today_date=resource.TODAY_YYYY_MM_DD):
+        parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.terminate_after)
+        return self.state == 'available' and resource.has_terminate_after_passed(parsed_date.expiry_date, today_date)
 
     # Check if an ami is safe to delete/terminate
-    def is_safe_to_terminate(self, today_date):
-        resource_type = Ami
-        return self.generic_is_safe_to_terminate(self, resource_type, today_date)
+    def is_safe_to_terminate_after_warning(self, today_date):
+        return self.state == 'completed' and super().is_safe_to_terminate_after_warning(today_date)
 
     # Check if a instance is active
     def is_active(self):
         return self.state == 'available'
-
-    # Determine if resource has a 'stopped' state - AMIs don't
-    @staticmethod
-    def can_be_stopped() -> bool:
-        return False
 
     # Create ami summary
     def make_resource_summary(self):

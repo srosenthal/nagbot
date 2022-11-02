@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from app import resource
+from app import resource, parsing
 from app import ami
 from .resource import Resource
 
@@ -128,37 +128,20 @@ class Snapshot(Resource):
             print(f'Failure when calling snapshot.delete(): {str(e)}')
             return False
 
-    def is_stoppable_without_warning(self):
-        return self.generic_is_stoppable_without_warning(self)
-
-    # Check if a snapshot is stoppable (should always be false)
-    def is_stoppable(self, today_date, is_weekend=TODAY_IS_WEEKEND):
-        return self.generic_is_stoppable(self, today_date, is_weekend)
-
     # Check if a snapshot is deletable/terminatable
-    def is_terminatable(self, today_date):
+    def can_be_terminated(self, today_date=resource.TODAY_YYYY_MM_DD):
         if self.is_ami_snapshot or self.is_aws_backup_snapshot:
             return False
-        state = 'completed'
-        return self.generic_is_terminatable(self, state, today_date)
-
-    # Check if a snapshot is safe to stop (should always be false)
-    def is_safe_to_stop(self, today_date, is_weekend=TODAY_IS_WEEKEND):
-        return self.generic_is_safe_to_stop(self, today_date, is_weekend)
+        parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.terminate_after)
+        return self.state == 'completed' and resource.has_terminate_after_passed(parsed_date.expiry_date, today_date)
 
     # Check if a snapshot is safe to delete/terminate
-    def is_safe_to_terminate(self, today_date):
-        resource_type = Snapshot
-        return self.generic_is_safe_to_terminate(self, resource_type, today_date)
+    def is_safe_to_terminate_after_warning(self, today_date):
+        return self.state == 'completed' and super().is_safe_to_terminate_after_warning(today_date)
 
     # Check if a snapshot is active
     def is_active(self):
         return True if self.state == 'completed' else False
-
-    # Determine if resource has a 'stopped' state - Snapshots don't
-    @staticmethod
-    def can_be_stopped() -> bool:
-        return False
 
     # Create snapshot summary
     def make_resource_summary(self):

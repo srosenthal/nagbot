@@ -17,7 +17,7 @@ from .ami import Ami
 from .snapshot import Snapshot
 
 TODAY = datetime.today()
-TODAY_YYYY_MM_DD = TODAY.strftime('%Y-%m-%d')
+TODAY_YYYY_MM_DD = TODAY.strftime('%Y-%m-%d') # to be deleted ?
 
 RESOURCE_TYPES = [Instance, Ami, Snapshot, Volume]
 
@@ -52,8 +52,9 @@ class Nagbot(object):
 
             resources = sorted((r for r in resources if not (len(r.eks_nodegroup_name) > 0)), key=lambda i: i.name)
 
-            resources_to_terminate = (list(r for r in resources if r.is_terminatable(TODAY_YYYY_MM_DD)))
-            resources_to_stop = list(r for r in resources if r.is_stoppable(today_date=TODAY_YYYY_MM_DD))
+            resources_to_terminate = (list(r for r in resources if r.can_be_terminated()))
+            resources_to_stop = list(r for r in resources if (r.is_stoppable_without_warning() or
+                                                              r.is_stoppable_after_warning()))
 
             if len(resources_to_terminate) > 0:
                 summary_msg += f'The following {len(resources_to_terminate)} {ec2_type}s are due to be *TERMINATED*, ' \
@@ -97,13 +98,12 @@ class Nagbot(object):
             resources = resource_type.list_resources()
 
             # Only terminate resources which still meet the criteria for terminating, AND were warned several times
-            resources_to_terminate = list(r for r in resources if r.is_terminatable(TODAY_YYYY_MM_DD) and
-                                          r.is_safe_to_terminate(TODAY_YYYY_MM_DD))
+            resources_to_terminate = list(r for r in resources if r.can_be_terminated(TODAY_YYYY_MM_DD) and
+                                          r.is_safe_to_terminate_after_warning(TODAY_YYYY_MM_DD))
 
             # Only stop resources which still meet the criteria for stopping
-            resources_to_stop = list(r for r in resources if (r.is_stoppable_without_warning()) or
-                                     (r.is_stoppable(today_date=TODAY_YYYY_MM_DD)
-                                      and r.is_safe_to_stop(today_date=TODAY_YYYY_MM_DD)))
+            resources_to_stop = list(r for r in resources if (r.is_stoppable_without_warning() or
+                                                              r.is_stoppable_after_warning()))
 
             if len(resources_to_terminate) > 0:
                 message = f'I terminated the following {ec2_type}s: '
