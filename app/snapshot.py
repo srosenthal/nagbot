@@ -90,7 +90,8 @@ class Snapshot(Resource):
         monthly_price = estimate_monthly_snapshot_price(snapshot_type, size)
 
         snapshot = Resource.build_generic_model(tags, resource_dict, region_name, resource_id_tag, resource_type_tag)
-        is_aws_backup_snapshot, is_ami_snapshot = is_backup_or_ami_snapshot(snapshot.resource_id, resource_dict['Description'])
+        is_aws_backup_snapshot, is_ami_snapshot = \
+            is_backup_or_ami_snapshot(resource_dict['Description'], region_name)
 
         return Snapshot(region_name=region_name,
                         resource_id=snapshot.resource_id,
@@ -191,7 +192,7 @@ def estimate_monthly_snapshot_price(type: str, size: float) -> float:
 # Checks the snapshot description to see if the snapshot is part of an AMI or AWS backup.
 # If the snapshot is part of an AMI, but the AMI has been deregistered, then this function will return False
 # for is_ami_snapshot so the remaining snapshot can be cleaned up.
-def is_backup_or_ami_snapshot(name: str, description: str) -> bool:
+def is_backup_or_ami_snapshot(description: str, region_name: str) -> bool:
     is_aws_backup_snapshot = False
     is_ami_snapshot = False
     if "AWS Backup service" in description:
@@ -200,6 +201,6 @@ def is_backup_or_ami_snapshot(name: str, description: str) -> bool:
         # regex matches the first occurrence of ami, since the snapshot
         # belongs to the first mentioned ami (destination ami) and not the second (source ami)
         ami_id = re.search(r'ami-\S*', description).group()
-        is_ami_snapshot = ami.is_ami_registered(ami_id)
+        is_ami_snapshot = ami.is_ami_registered(ami_id, region_name)
 
     return is_aws_backup_snapshot, is_ami_snapshot
