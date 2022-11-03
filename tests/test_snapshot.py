@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 from unittest.mock import MagicMock
 
-from app import resource
+import app.common_util as util
 from app import nagbot
 from app.snapshot import Snapshot
 
@@ -33,15 +33,15 @@ class TestSnapshot(unittest.TestCase):
                         is_ami_snapshot=False,
                         is_aws_backup_snapshot=False)
 
-    def test_stoppable_without_warning(self):
+    def test_can_be_stopped(self):
         completed_no_stop_after = self.setup_snapshot(state='completed')
         pending_no_stop_after = self.setup_snapshot(state='pending')
 
-        assert Snapshot.is_stoppable_without_warning(completed_no_stop_after) is False
-        assert Snapshot.is_stoppable_without_warning(pending_no_stop_after) is False
+        assert completed_no_stop_after.can_be_stopped(is_weekend=False) is False
+        assert pending_no_stop_after.can_be_stopped(is_weekend=False) is False
 
-    def test_stoppable(self):
-        todays_date = nagbot.TODAY_YYYY_MM_DD
+    def test_is_safe_to_stop(self):
+        todays_date = util.TODAY_YYYY_MM_DD
         past_date = self.setup_snapshot(state='completed', terminate_after='2019-01-01')
         today_date = self.setup_snapshot(state='completed', terminate_after=todays_date)
 
@@ -51,7 +51,7 @@ class TestSnapshot(unittest.TestCase):
                                                 terminate_after=todays_date + today_warning_str)
         anything_warned = self.setup_snapshot(state='completed', terminate_after='I Like Pie' + today_warning_str)
 
-        old_warning_str = ' (Nagbot: Warned on ' + resource.MIN_TERMINATION_WARNING_YYYY_MM_DD + ')'
+        old_warning_str = ' (Nagbot: Warned on ' + util.MIN_TERMINATION_WARNING_YYYY_MM_DD + ')'
         past_date_warned_days_ago = self.setup_snapshot(state='completed', terminate_after='2019-01-01' +
                                                                                            old_warning_str)
         anything_warned_days_ago = self.setup_snapshot(state='completed', terminate_after='I Like Pie' +
@@ -61,19 +61,19 @@ class TestSnapshot(unittest.TestCase):
         future_date = self.setup_snapshot(state='completed', terminate_after='2050-01-01')
         unknown_date = self.setup_snapshot(state='completed', terminate_after='TBD')
 
-        assert Snapshot.is_stoppable(past_date, todays_date) is False
-        assert Snapshot.is_stoppable(today_date, todays_date) is False
-        assert Snapshot.is_stoppable(past_date_warned, todays_date) is False
-        assert Snapshot.is_stoppable(today_date_warned, todays_date) is False
-        assert Snapshot.is_stoppable(anything_warned, todays_date) is False
-        assert Snapshot.is_stoppable(past_date_warned_days_ago, todays_date) is False
-        assert Snapshot.is_stoppable(anything_warned_days_ago, todays_date) is False
-        assert Snapshot.is_stoppable(wrong_state, todays_date) is False
-        assert Snapshot.is_stoppable(future_date, todays_date) is False
-        assert Snapshot.is_stoppable(unknown_date, todays_date) is False
+        assert past_date.is_safe_to_stop(todays_date) is False
+        assert today_date.is_safe_to_stop(todays_date) is False
+        assert past_date_warned.is_safe_to_stop(todays_date) is False
+        assert today_date_warned.is_safe_to_stop(todays_date) is False
+        assert anything_warned.is_safe_to_stop(todays_date) is False
+        assert past_date_warned_days_ago.is_safe_to_stop(todays_date) is False
+        assert anything_warned_days_ago.is_safe_to_stop(todays_date) is False
+        assert wrong_state.is_safe_to_stop(todays_date) is False
+        assert future_date.is_safe_to_stop(todays_date) is False
+        assert unknown_date.is_safe_to_stop(todays_date) is False
 
     def test_deletable(self):
-        todays_date = nagbot.TODAY_YYYY_MM_DD
+        todays_date = util.TODAY_YYYY_MM_DD
         past_date = self.setup_snapshot(state='completed', terminate_after='2019-01-01')
         today_date = self.setup_snapshot(state='completed', terminate_after=todays_date)
 
@@ -83,7 +83,7 @@ class TestSnapshot(unittest.TestCase):
                                                 terminate_after=todays_date + today_warning_str)
         anything_warned = self.setup_snapshot(state='completed', terminate_after='I Like Pie' + today_warning_str)
 
-        old_warning_str = ' (Nagbot: Warned on ' + resource.MIN_TERMINATION_WARNING_YYYY_MM_DD + ')'
+        old_warning_str = ' (Nagbot: Warned on ' + util.MIN_TERMINATION_WARNING_YYYY_MM_DD + ')'
         past_date_warned_days_ago = self.setup_snapshot(state='completed', terminate_after='2019-01-01' +
                                                                                            old_warning_str)
         anything_warned_days_ago = self.setup_snapshot(state='completed', terminate_after='I Like Pie' +
@@ -99,38 +99,38 @@ class TestSnapshot(unittest.TestCase):
         aws_backup_snapshot.__setattr__('is_aws_backup_snapshot', True)
 
         # These snapshots should get a deletion warning
-        assert Snapshot.is_terminatable(past_date, todays_date) is True
-        assert Snapshot.is_terminatable(today_date, todays_date) is True
-        assert Snapshot.is_terminatable(past_date_warned, todays_date) is True
-        assert Snapshot.is_terminatable(today_date_warned, todays_date) is True
+        assert past_date.can_be_terminated(todays_date) is True
+        assert today_date.can_be_terminated(todays_date) is True
+        assert past_date_warned.can_be_terminated(todays_date) is True
+        assert today_date_warned.can_be_terminated(todays_date) is True
 
         # These snapshots should NOT get a deletion warning
-        assert Snapshot.is_terminatable(wrong_state, todays_date) is False
-        assert Snapshot.is_terminatable(future_date, todays_date) is False
-        assert Snapshot.is_terminatable(unknown_date, todays_date) is False
-        assert Snapshot.is_terminatable(anything_warned, todays_date) is False
+        assert wrong_state.can_be_terminated(todays_date) is False
+        assert future_date.can_be_terminated(todays_date) is False
+        assert unknown_date.can_be_terminated(todays_date) is False
+        assert anything_warned.can_be_terminated(todays_date) is False
 
         # These snapshots should not be deleted since they are aws backup or ami snapshots
-        assert Snapshot.is_terminatable(ami_snapshot, todays_date) is False
-        assert Snapshot.is_terminatable(aws_backup_snapshot, todays_date) is False
+        assert ami_snapshot.can_be_terminated(todays_date) is False
+        assert aws_backup_snapshot.can_be_terminated(todays_date) is False
 
         # These snapshots don't have a warning, so they shouldn't be deleted yet
-        assert Snapshot.is_safe_to_terminate(past_date, todays_date) is False
-        assert Snapshot.is_safe_to_terminate(today_date, todays_date) is False
-        assert Snapshot.is_safe_to_terminate(unknown_date, todays_date) is False
-        assert Snapshot.is_safe_to_terminate(wrong_state, todays_date) is False
-        assert Snapshot.is_safe_to_terminate(future_date, todays_date) is False
-        assert Snapshot.is_safe_to_terminate(anything_warned, todays_date) is False
+        assert past_date.is_safe_to_terminate_after_warning(todays_date) is False
+        assert today_date.is_safe_to_terminate_after_warning(todays_date) is False
+        assert unknown_date.is_safe_to_terminate_after_warning(todays_date) is False
+        assert wrong_state.is_safe_to_terminate_after_warning(todays_date) is False
+        assert future_date.is_safe_to_terminate_after_warning(todays_date) is False
+        assert anything_warned.is_safe_to_terminate_after_warning(todays_date) is False
 
         # These snapshots can be deleted, but not yet
-        assert Snapshot.is_safe_to_terminate(past_date_warned, todays_date) is False
-        assert Snapshot.is_safe_to_terminate(today_date_warned, todays_date) is False
+        assert past_date_warned.is_safe_to_terminate_after_warning(todays_date) is False
+        assert today_date_warned.is_safe_to_terminate_after_warning(todays_date) is False
 
         # These snapshots have a warning, but are not eligible to add a warning, so we don't delete
-        assert Snapshot.is_safe_to_terminate(anything_warned_days_ago, todays_date) is False
+        assert anything_warned_days_ago.is_safe_to_terminate_after_warning(todays_date) is False
 
         # These snapshots can be deleted now
-        assert Snapshot.is_safe_to_terminate(past_date_warned_days_ago, todays_date) is True
+        assert past_date_warned_days_ago.is_safe_to_terminate_after_warning(todays_date) is True
 
     @staticmethod
     @patch('app.snapshot.boto3.client')

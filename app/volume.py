@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from app import resource, parsing
+import app.common_util as util
+from app import parsing
 from .resource import Resource
 import boto3
 
@@ -72,7 +73,7 @@ class Volume(Resource):
     # Get the info about a single EBS volume
     @staticmethod
     def build_model(region_name: str, resource_dict: dict):
-        tags = resource.make_tags_dict(resource_dict.get('Tags', []))
+        tags = util.make_tags_dict(resource_dict.get('Tags', []))
 
         state = resource_dict['State']
         ec2_type = 'volume'
@@ -123,10 +124,10 @@ class Volume(Resource):
             print(f'Failure when calling delete_volumes: {str(e)}')
             return False
 
-   # Check if a volume is deletable/terminatable without warning
-    def can_be_terminated(self, today_date=resource.TODAY_YYYY_MM_DD):
+    # Check if a volume is deletable/terminatable without warning
+    def can_be_terminated(self, today_date=util.TODAY_YYYY_MM_DD):
         parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.terminate_after)
-        return self.state == 'available' and resource.has_terminate_after_passed(parsed_date.expiry_date, today_date)
+        return self.state == 'available' and util.has_date_passed(parsed_date.expiry_date, today_date)
 
     # Check if a volume is safe to delete/terminate - warning period has passed
     def is_safe_to_terminate_after_warning(self, today_date):

@@ -1,15 +1,11 @@
 from dataclasses import dataclass
 
-from app import resource, parsing
+import app.common_util as util
+from app import parsing
 from .resource import Resource
 from .volume import estimate_monthly_ebs_storage_price
 import boto3
 from .pricing import PricingData
-
-from datetime import datetime
-
-TODAY = datetime.today()
-TODAY_IS_WEEKEND = TODAY.weekday() >= 4  # Days are 0-6. 4=Friday, 5=Saturday, 6=Sunday, 0=Monday
 
 
 @dataclass
@@ -52,9 +48,9 @@ class Instance(Resource):
                 self.terminate_after,
                 self.contact,
                 self.nagbot_state,
-                resource.money_to_string(self.monthly_price),
-                resource.money_to_string(self.monthly_server_price),
-                resource.money_to_string(self.monthly_storage_price),
+                util.money_to_string(self.monthly_price),
+                util.money_to_string(self.monthly_server_price),
+                util.money_to_string(self.monthly_storage_price),
                 self.region_name,
                 self.resource_type,
                 self.reason,
@@ -81,7 +77,7 @@ class Instance(Resource):
     # Get the info about a single EC2 instance
     @staticmethod
     def build_model(region_name: str, resource_dict: dict):
-        tags = resource.make_tags_dict(resource_dict.get('Tags', []))
+        tags = util.make_tags_dict(resource_dict.get('Tags', []))
 
         state = resource_dict['State']['Name']
         ec2_type = 'instance'
@@ -136,23 +132,34 @@ class Instance(Resource):
             return False
 
     # Instance with no stop after tag should be stopped immediately
-    def is_stoppable_without_warning(self, is_weekend=TODAY_IS_WEEKEND):
+    def is_stoppable_without_warning(self, is_weekend=util.TODAY_IS_WEEKEND):
         parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.stop_after)
         return self.state == 'running' and parsed_date.expiry_date is None and \
             ((not parsed_date.on_weekends) or (parsed_date.on_weekends and is_weekend))
 
-    # Check if an instance is stoppable after warning
-    def is_stoppable_after_warning(self, today_date=resource.TODAY_YYYY_MM_DD):
+    def is_stoppable(self, today_date=util.TODAY_YYYY_MM_DD, is_weekend=util.TODAY_IS_WEEKEND):
         parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.stop_after)
-        expiry_date = parsed_date.expiry_date
+        return self.state == 'running' and (
+            # Treat unspecified "Stop after" dates as being in the past
+            (parsed_date.expiry_date is None and not parsed_date.on_weekends)
+            or (parsed_date.on_weekends and is_weekend)
+            or (parsed_date.expiry_date is not None and today_date >= parsed_date.expiry_date))
+
+    def can_be_stopped(self, today_date=util.TODAY_YYYY_MM_DD, is_weekend=util.TODAY_IS_WEEKEND):
+        return self.is_stoppable(today_date, is_weekend) and self.is_stoppable_without_warning(is_weekend)
+
+    # Check if an instance is stoppable after warning
+    def is_safe_to_stop(self, today_date=util.TODAY_YYYY_MM_DD, is_weekend=util.TODAY_IS_WEEKEND):
+        parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.stop_after)
         warning_date = parsed_date.warning_date
-        return self.state == 'running' and expiry_date is not None and today_date >= expiry_date and \
-            warning_date is not None and warning_date <= today_date
+        return (self.is_stoppable_without_warning(parsed_date.on_weekends) or
+                (self.is_stoppable(today_date, parsed_date.on_weekends)
+                 and util.has_date_passed(warning_date, util.TODAY_YYYY_MM_DD)))
 
     # Check if an instance is terminatable
-    def can_be_terminated(self, today_date=resource.TODAY_YYYY_MM_DD):
+    def can_be_terminated(self, today_date=util.TODAY_YYYY_MM_DD):
         parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.terminate_after)
-        return self.state == 'stopped' and resource.has_terminate_after_passed(parsed_date.expiry_date, today_date)
+        return self.state == 'stopped' and util.has_date_passed(parsed_date.expiry_date, today_date)
 
     # Check if an instance is safe to stop
 
@@ -163,10 +170,6 @@ class Instance(Resource):
     # Check if an instance is active
     def is_active(self):
         return True if self.state == 'running' else False
-
-    # Determine if resource has a 'stopped' state - EC2 Instances do
-    def can_be_stopped(self) -> bool:
-        return True
 
     # Create instance summary
     def make_resource_summary(self):

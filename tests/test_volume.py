@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 
+import app.common_util as util
 from app import resource
 from app import nagbot
 from app.volume import Volume
@@ -32,15 +33,15 @@ class TestVolume(unittest.TestCase):
                       iops=1,
                       throughput=125)
 
-    def test_stoppable_without_warning(self):
+    def test_can_be_stopped(self):
         running_no_stop_after = self.setup_volume(state='running')
         stopped_no_stop_after = self.setup_volume(state='stopped')
 
-        assert Volume.is_stoppable_without_warning(running_no_stop_after) is False
-        assert Volume.is_stoppable_without_warning(stopped_no_stop_after) is False
+        assert running_no_stop_after.can_be_stopped() is False
+        assert stopped_no_stop_after.can_be_stopped() is False
 
-    def test_stoppable(self):
-        todays_date = nagbot.TODAY_YYYY_MM_DD
+    def test_is_safe_to_stop(self):
+        todays_date = util.TODAY_YYYY_MM_DD
         past_date = self.setup_volume(state='available', terminate_after='2019-01-01')
         today_date = self.setup_volume(state='available', terminate_after=todays_date)
 
@@ -50,7 +51,7 @@ class TestVolume(unittest.TestCase):
                                               terminate_after=todays_date + today_warning_str)
         anything_warned = self.setup_volume(state='available', terminate_after='I Like Pie' + today_warning_str)
 
-        old_warning_str = ' (Nagbot: Warned on ' + resource.MIN_TERMINATION_WARNING_YYYY_MM_DD + ')'
+        old_warning_str = ' (Nagbot: Warned on ' + util.MIN_TERMINATION_WARNING_YYYY_MM_DD + ')'
         past_date_warned_days_ago = self.setup_volume(state='available', terminate_after='2019-01-01' +
                                                                                          old_warning_str)
         anything_warned_days_ago = self.setup_volume(state='available', terminate_after='I Like Pie' +
@@ -60,19 +61,19 @@ class TestVolume(unittest.TestCase):
         future_date = self.setup_volume(state='available', terminate_after='2050-01-01')
         unknown_date = self.setup_volume(state='available', terminate_after='TBD')
 
-        assert Volume.is_stoppable(past_date, todays_date) is False
-        assert Volume.is_stoppable(today_date, todays_date) is False
-        assert Volume.is_stoppable(past_date_warned, todays_date) is False
-        assert Volume.is_stoppable(today_date_warned, todays_date) is False
-        assert Volume.is_stoppable(anything_warned, todays_date) is False
-        assert Volume.is_stoppable(past_date_warned_days_ago, todays_date) is False
-        assert Volume.is_stoppable(anything_warned_days_ago, todays_date) is False
-        assert Volume.is_stoppable(wrong_state, todays_date) is False
-        assert Volume.is_stoppable(future_date, todays_date) is False
-        assert Volume.is_stoppable(unknown_date, todays_date) is False
+        assert past_date.is_safe_to_stop(todays_date) is False
+        assert today_date.is_safe_to_stop(todays_date) is False
+        assert past_date_warned.is_safe_to_stop(todays_date) is False
+        assert today_date_warned.is_safe_to_stop(todays_date) is False
+        assert anything_warned.is_safe_to_stop(todays_date) is False
+        assert past_date_warned_days_ago.is_safe_to_stop(todays_date) is False
+        assert anything_warned_days_ago.is_safe_to_stop(todays_date) is False
+        assert wrong_state.is_safe_to_stop(todays_date) is False
+        assert future_date.is_safe_to_stop(todays_date) is False
+        assert unknown_date.is_safe_to_stop(todays_date) is False
 
     def test_deletable(self):
-        todays_date = nagbot.TODAY_YYYY_MM_DD
+        todays_date = util.TODAY_YYYY_MM_DD
         past_date = self.setup_volume(state='available', terminate_after='2019-01-01')
         today_date = self.setup_volume(state='available', terminate_after=todays_date)
 
@@ -82,7 +83,7 @@ class TestVolume(unittest.TestCase):
                                               terminate_after=todays_date + today_warning_str)
         anything_warned = self.setup_volume(state='available', terminate_after='I Like Pie' + today_warning_str)
 
-        old_warning_str = ' (Nagbot: Warned on ' + resource.MIN_TERMINATION_WARNING_YYYY_MM_DD + ')'
+        old_warning_str = ' (Nagbot: Warned on ' + util.MIN_TERMINATION_WARNING_YYYY_MM_DD + ')'
         past_date_warned_days_ago = self.setup_volume(state='available', terminate_after='2019-01-01' +
                                                                                          old_warning_str)
         anything_warned_days_ago = self.setup_volume(state='available', terminate_after='I Like Pie' +
@@ -93,34 +94,34 @@ class TestVolume(unittest.TestCase):
         unknown_date = self.setup_volume(state='available', terminate_after='TBD')
 
         # These volumes should get a deletion warning
-        assert Volume.is_terminatable(past_date, todays_date) is True
-        assert Volume.is_terminatable(today_date, todays_date) is True
-        assert Volume.is_terminatable(past_date_warned, todays_date) is True
-        assert Volume.is_terminatable(today_date_warned, todays_date) is True
+        assert past_date.can_be_terminated(todays_date) is True
+        assert today_date.can_be_terminated(todays_date) is True
+        assert past_date_warned.can_be_terminated(todays_date) is True
+        assert today_date_warned.can_be_terminated(todays_date) is True
 
         # These volumes should NOT get a deletion warning
-        assert Volume.is_terminatable(wrong_state, todays_date) is False
-        assert Volume.is_terminatable(future_date, todays_date) is False
-        assert Volume.is_terminatable(unknown_date, todays_date) is False
-        assert Volume.is_terminatable(anything_warned, todays_date) is False
+        assert wrong_state.can_be_terminated(todays_date) is False
+        assert future_date.can_be_terminated(todays_date) is False
+        assert unknown_date.can_be_terminated(todays_date) is False
+        assert anything_warned.can_be_terminated(todays_date) is False
 
         # These volumes don't have a warning, so they shouldn't be deleted yet
-        assert Volume.is_safe_to_terminate(past_date, todays_date) is False
-        assert Volume.is_safe_to_terminate(today_date, todays_date) is False
-        assert Volume.is_safe_to_terminate(unknown_date, todays_date) is False
-        assert Volume.is_safe_to_terminate(wrong_state, todays_date) is False
-        assert Volume.is_safe_to_terminate(future_date, todays_date) is False
-        assert Volume.is_safe_to_terminate(anything_warned, todays_date) is False
+        assert past_date.is_safe_to_terminate_after_warning(todays_date) is False
+        assert today_date.is_safe_to_terminate_after_warning(todays_date) is False
+        assert unknown_date.is_safe_to_terminate_after_warning(todays_date) is False
+        assert wrong_state.is_safe_to_terminate_after_warning(todays_date) is False
+        assert future_date.is_safe_to_terminate_after_warning(todays_date) is False
+        assert anything_warned.is_safe_to_terminate_after_warning(todays_date) is False
 
         # These volumes can be deleted, but not yet
-        assert Volume.is_safe_to_terminate(past_date_warned, todays_date) is False
-        assert Volume.is_safe_to_terminate(today_date_warned, todays_date) is False
+        assert past_date_warned.is_safe_to_terminate_after_warning(todays_date) is False
+        assert today_date_warned.is_safe_to_terminate_after_warning(todays_date) is False
 
         # These volumes have a warning, but are not eligible to add a warning, so we don't delete
-        assert Volume.is_safe_to_terminate(anything_warned_days_ago, todays_date) is False
+        assert anything_warned_days_ago.is_safe_to_terminate_after_warning(todays_date) is False
 
         # These volumes can be deleted now
-        assert Volume.is_safe_to_terminate(past_date_warned_days_ago, todays_date) is True
+        assert past_date_warned_days_ago.is_safe_to_terminate_after_warning(todays_date) is True
 
     @staticmethod
     @patch('app.volume.boto3.client')

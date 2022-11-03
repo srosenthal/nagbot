@@ -1,16 +1,12 @@
 from dataclasses import dataclass
 
-from app import resource, parsing
+import app.common_util as util
+from app import parsing
 from app import ami
 from .resource import Resource
 
 import boto3
-
-from datetime import datetime
 import re
-
-TODAY = datetime.today()
-TODAY_IS_WEEKEND = TODAY.weekday() >= 4  # Days are 0-6. 4=Friday, 5=Saturday, 6=Sunday, 0=Monday
 
 
 @dataclass
@@ -79,7 +75,7 @@ class Snapshot(Resource):
 
     @staticmethod
     def build_model(region_name: str, resource_dict: dict):
-        tags = resource.make_tags_dict(resource_dict.get('Tags', []))
+        tags = util.make_tags_dict(resource_dict.get('Tags', []))
         state = resource_dict['State']
         ec2_type = 'snapshot'
         size = resource_dict['VolumeSize']
@@ -129,11 +125,11 @@ class Snapshot(Resource):
             return False
 
     # Check if a snapshot is deletable/terminatable
-    def can_be_terminated(self, today_date=resource.TODAY_YYYY_MM_DD):
+    def can_be_terminated(self, today_date=util.TODAY_YYYY_MM_DD):
         if self.is_ami_snapshot or self.is_aws_backup_snapshot:
             return False
         parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.terminate_after)
-        return self.state == 'completed' and resource.has_terminate_after_passed(parsed_date.expiry_date, today_date)
+        return self.state == 'completed' and util.has_date_passed(parsed_date.expiry_date, today_date)
 
     # Check if a snapshot is safe to delete/terminate
     def is_safe_to_terminate_after_warning(self, today_date):

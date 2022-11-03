@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import app.common_util as util
 import app.resource
 import app.volume
 import app.instance
@@ -13,7 +14,7 @@ def test_make_tags_dict():
                  {'Key': 'Terminate after', 'Value': '2021-01-01'},
                  {'Key': 'Name', 'Value': 'super-cool-server.seeq.com'}]
 
-    tags_dict = app.resource.make_tags_dict(tags_list)
+    tags_dict = util.make_tags_dict(tags_list)
 
     assert tags_dict == {'Contact': 'stephen.rosenthal@seeq.com',
                          'Stop after': '2020-01-01',
@@ -30,7 +31,7 @@ def test_set_tag(mock_client):
     ec2_type = 'instance'
     mock_ec2 = mock_client.return_value
 
-    app.resource.set_tag(region_name, ec2_type, instance_id, tag_name, tag_value, dryrun=False)
+    util.set_tag(region_name, ec2_type, instance_id, tag_name, tag_value, dryrun=False)
 
     mock_client.assert_called_once_with('ec2', region_name=region_name)
     mock_ec2.create_tags.assert_called_once_with(Resources=[instance_id], Tags=[{
@@ -45,7 +46,7 @@ def test_stop_instance(mock_client):
     instance_id = 'i-0f06b49c1f16dcfde'
     mock_ec2 = mock_client.return_value
 
-    assert app.resource.stop_resource(region_name, instance_id, dryrun=False)
+    assert util.stop_resource(region_name, instance_id, dryrun=False)
 
     mock_client.assert_called_once_with('ec2', region_name=region_name)
     mock_ec2.stop_instances.assert_called_once_with(InstanceIds=[instance_id])
@@ -62,7 +63,7 @@ def test_stop_instance_exception(mock_client):
     mock_ec2 = mock_client.return_value
     mock_ec2.stop_instances.side_effect = lambda *args, **kw: raise_error()
 
-    assert not app.resource.stop_resource(region_name, instance_id, dryrun=False)
+    assert not util.stop_resource(region_name, instance_id, dryrun=False)
 
     mock_client.assert_called_once_with('ec2', region_name=region_name)
     mock_ec2.stop_instances.assert_called_once_with(InstanceIds=[instance_id])
@@ -97,7 +98,7 @@ def test_stop_instance_exception(mock_client):
                          ])
 def test_get_tag_names(test_dict, expected_stop_result, expected_terminate_result, expected_nagbot_state,
                        expected_stop_tag_name, expected_terminate_tag_name, expected_nagbot_state_tag_name):
-    stop_after_tag_name, terminate_after_tag_name, nagbot_state_tag_name = app.resource.get_tag_names(test_dict)
+    stop_after_tag_name, terminate_after_tag_name, nagbot_state_tag_name = util.get_tag_names(test_dict)
     stop_after = test_dict.get(stop_after_tag_name, '')
     terminate_after = test_dict.get(terminate_after_tag_name, '')
     nagbot_state = test_dict.get(nagbot_state_tag_name, '')

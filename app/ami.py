@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from app import resource, parsing
+import app.common_util as util
+from app import parsing
 from .resource import Resource
 from .snapshot import estimate_monthly_snapshot_price
 import boto3
@@ -75,7 +76,7 @@ class Ami(Resource):
     # Get the info about a single AMI
     @staticmethod
     def build_model(region_name: str, resource_dict: dict):
-        tags = resource.make_tags_dict(resource_dict.get('Tags', []))
+        tags = util.make_tags_dict(resource_dict.get('Tags', []))
 
         state = resource_dict['State']
         ec2_type = 'ami'
@@ -141,13 +142,13 @@ class Ami(Resource):
         return snapshots_deleted
 
     # Check if an ami is deletable/terminatable
-    def can_be_terminated(self, today_date=resource.TODAY_YYYY_MM_DD):
+    def can_be_terminated(self, today_date=util.TODAY_YYYY_MM_DD):
         parsed_date: parsing.ParsedDate = parsing.parse_date_tag(self.terminate_after)
-        return self.state == 'available' and resource.has_terminate_after_passed(parsed_date.expiry_date, today_date)
+        return self.state == 'available' and util.has_date_passed(parsed_date.expiry_date, today_date)
 
     # Check if an ami is safe to delete/terminate
     def is_safe_to_terminate_after_warning(self, today_date):
-        return self.state == 'completed' and super().is_safe_to_terminate_after_warning(today_date)
+        return self.state == 'available' and super().is_safe_to_terminate_after_warning(today_date)
 
     # Check if a instance is active
     def is_active(self):
