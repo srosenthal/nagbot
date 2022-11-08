@@ -118,7 +118,7 @@ class Snapshot(Resource):
 
     def terminate_resource(self, dryrun: bool) -> bool:
         print(f'Deleting snapshot: {str(self.resource_id)}...')
-        ec2 = boto3.client('ec2', region_name=self.region_name)
+        ec2 = boto3.resource('ec2', region_name=self.region_name)
         snapshot = ec2.Snapshot(self.resource_id)
         try:
             if not dryrun:
